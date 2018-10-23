@@ -10,8 +10,8 @@ int main(int argc, char** argv)
   RRTVisual vis(node, "test");
 
   auto &rrt = Kinodynamic::rrtstar_batch_int2d;
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &env = Kinodynamic::robosoccer_env_cuda;
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &env = Kinodynamic::Wrapper::get_robosoccer_env()_cuda;
 
   auto xs = Kinodynamic::state_t();
   auto xg = Kinodynamic::state_t();
@@ -27,17 +27,17 @@ int main(int argc, char** argv)
   if(!node.getParam("/target_tree_size",target_tree_size))
     target_tree_size = 5000;
   if(node.getParam("/neighbor_radius_scale",neighbor_radius_scale))
-    Kinodynamic::radius.scale = neighbor_radius_scale;
+    Kinodynamic::Wrapper::get_radius().scale = neighbor_radius_scale;
 
   while(ros::ok()) {
     Kinodynamic::batch_checker.setRandomObstacles();
-    xs = Kinodynamic::sampler();
+    xs = Kinodynamic::Wrapper::get_sampler()();
     rrt.setStart(xs);
     rrt.setIteration(0);
     bool solved = false;
     auto t0 = ros::Time::now();
     auto vis_t0 = ros::Time::now();
-    auto xg = Kinodynamic::goal.randomGoal();
+    auto xg = Kinodynamic::Wrapper::get_goal().randomGoal();
     while((!solved) && ros::ok()) {
       ROS_INFO("growing tree..");
       rrt.grow();

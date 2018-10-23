@@ -109,8 +109,8 @@ int main(int argc, char** argv)
   Models::init_integrator2d();
   RRTVisual vis(node);
 
-  auto &rrt = Kinodynamic::rrtstar_int2d;
-  auto &tree = Kinodynamic::tree_int2d;
+  auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
 
   auto xs = Kinodynamic::state_t();
   auto xg = Kinodynamic::state_t();
@@ -133,7 +133,7 @@ int main(int argc, char** argv)
   if(!node.getParam("/target_solution_size",target_solution_size))
     target_solution_size = 22*11;
   if(node.getParam("/neighbor_radius_scale",neighbor_radius_scale))
-    Kinodynamic::radius.scale = neighbor_radius_scale;
+    Kinodynamic::Wrapper::get_radius().scale = neighbor_radius_scale;
 
   std::string dir("1");
   std::string motion_dir;
@@ -166,10 +166,10 @@ int main(int argc, char** argv)
       ROS_INFO("loading %s %s %s", tree_file.c_str(), parent_file.c_str(), trajectory_file.c_str());
       tree.from_text(tree_file, parent_file, trajectory_file);
       ROS_INFO("loading %s", environment_file.c_str());
-      Kinodynamic::checker.from_text(environment_file);
+      Kinodynamic::Wrapper::get_checker().from_text(environment_file);
       rrt.setIteration(tree.tree.size());
       while((sol_size <= 0 || (sol_size % target_solution_size)) && ros::ok()){
-        auto xg = Kinodynamic::goal.randomGoal();
+        auto xg = Kinodynamic::Wrapper::get_goal().randomGoal();
         ROS_INFO("finding solution... xg(%f,%f,%f,%f)",xg(0),xg(1),xg(2),xg(3));
         auto found = rrt.insertGoal(xg,0);
         ROS_INFO("tree size : %d", tree.tree.size());
@@ -180,7 +180,7 @@ int main(int argc, char** argv)
           auto trajectory = tree.get_trajectory(goal_id);
           std::get<0>(sol) = tree.tree(0);
           std::get<1>(sol) = tree.tree(goal_id);
-          std::get<2>(sol) = Kinodynamic::robosoccer_env.obs;
+          std::get<2>(sol) = Kinodynamic::Wrapper::get_robosoccer_env().obs;
           std::get<3>(sol) = trajectory;
           solutions.push_back(sol);
           sol_size = sol_size+1;

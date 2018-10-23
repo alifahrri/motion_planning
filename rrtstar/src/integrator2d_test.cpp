@@ -14,9 +14,9 @@ int main(int argc, char** argv)
   Models::init_integrator2d();
   RRTVisual vis(node, "test");
 
-  auto &rrt = Kinodynamic::rrtstar_int2d;
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &env = Kinodynamic::robosoccer_env;
+  auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &env = Kinodynamic::Wrapper::get_robosoccer_env();
 
   auto xs = Kinodynamic::state_t();
   auto xg = Kinodynamic::state_t();
@@ -39,23 +39,23 @@ int main(int argc, char** argv)
   if(!node.getParam("/target_tree_size",target_tree_size))
     target_tree_size = 5000;
   if(node.getParam("/neighbor_radius_scale",neighbor_radius_scale))
-    Kinodynamic::radius.scale = neighbor_radius_scale;
+    Kinodynamic::Wrapper::get_radius().scale = neighbor_radius_scale;
 
   std::array<std::tuple<double,double>,9> obs;
   for(auto& o : obs)
     o = std::make_tuple(13.0,9.0);
-  Kinodynamic::checker.env = Robosoccer<double,9>(obs);
+  Kinodynamic::Wrapper::get_checker().env = Robosoccer<double,9>(obs);
 
   while(ros::ok()) {
-    // Kinodynamic::checker.setRandomObstacles();
+    // Kinodynamic::Wrapper::get_checker().setRandomObstacles();
     env.setRandomObstacles();
-    xs = Kinodynamic::sampler();
+    xs = Kinodynamic::Wrapper::get_sampler()();
     rrt.setStart(xs);
     rrt.setIteration(0);
     bool solved = false;
     auto t0 = ros::Time::now();
     auto vis_t0 = ros::Time::now();
-    auto xg = Kinodynamic::goal.randomGoal();
+    auto xg = Kinodynamic::Wrapper::get_goal().randomGoal();
     while((!solved) && ros::ok()) {
       ROS_INFO("growing tree..");
       rrt.grow();
@@ -71,8 +71,8 @@ int main(int argc, char** argv)
       ROS_INFO("dt : %f", dt.toSec());
       if(dt.toSec() > 0.5) {
         ROS_INFO("adding visual..");
-        auto r = Kinodynamic::checker.env.collision_radius;
-        for(const auto &o : Kinodynamic::checker.env.obs)
+        auto r = Kinodynamic::Wrapper::get_checker().env.collision_radius;
+        for(const auto &o : Kinodynamic::Wrapper::get_checker().env.obs)
           vis.add_obstacles(std::get<0>(o),std::get<1>(o),r);
         vis.set_trajectories(tree.tree.cloud.states, tree.trajectories, tree.parent, 2, tree.tree.size());
         ROS_INFO("publish visual..");
@@ -87,8 +87,8 @@ int main(int argc, char** argv)
     ROS_INFO("solution found in %f", (t1-t0).toSec());
     // visualize the tree
     ROS_INFO("adding visual..");
-    auto r = Kinodynamic::checker.env.collision_radius;
-    for(const auto &o : Kinodynamic::checker.env.obs)
+    auto r = Kinodynamic::Wrapper::get_checker().env.collision_radius;
+    for(const auto &o : Kinodynamic::Wrapper::get_checker().env.obs)
       vis.add_obstacles(std::get<0>(o),std::get<1>(o),r);
     vis.set_trajectories(tree.tree.cloud.states, tree.trajectories, tree.parent, 2, tree.tree.size());
     ROS_INFO("publish visual..");

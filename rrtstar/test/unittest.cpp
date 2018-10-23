@@ -29,7 +29,7 @@ typedef Models::Integrator2DSSComposite::SystemMatrix Integrator2DSSCompositeSys
 TEST(TimeSolver,Solve) {
   auto &time_diff = Models::integrator2d_opt_time_diff;
   auto &time_solver = Models::integrator2d_opt_time_solver;
-  auto &sampler = Kinodynamic::sampler;
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
   auto s0 = sampler();
   auto s1 = sampler();
 
@@ -41,9 +41,9 @@ TEST(TimeSolver,Solve) {
 
 TEST(TreeInt2D,insert)
 {
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &sampler = Kinodynamic::sampler;
-  auto &connector = Kinodynamic::connector;
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
   auto n = 100;
   auto s = sampler();
   tree.reset();
@@ -62,10 +62,10 @@ TEST(TreeInt2D,insert)
 }
 
 TEST(CollisionChecker, collision) {
-  auto &checker = Kinodynamic::checker;
-  auto &connector = Kinodynamic::connector;
-  auto &sampler = Kinodynamic::sampler;
-  auto &env = Kinodynamic::robosoccer_env;
+  auto &checker = Kinodynamic::Wrapper::get_checker();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &env = Kinodynamic::Wrapper::get_robosoccer_env();
 
   using state_t = decltype(sampler());
   state_t s0, s1;
@@ -82,10 +82,10 @@ TEST(CollisionChecker, collision) {
 }
 
 TEST(CollisionChecker, collision_free) {
-  auto &checker = Kinodynamic::checker;
-  auto &connector = Kinodynamic::connector;
-  auto &sampler = Kinodynamic::sampler;
-  auto &env = Kinodynamic::robosoccer_env;
+  auto &checker = Kinodynamic::Wrapper::get_checker();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &env = Kinodynamic::Wrapper::get_robosoccer_env();
 
   using state_t = decltype(sampler());
   state_t s0, s1;
@@ -102,10 +102,10 @@ TEST(CollisionChecker, collision_free) {
 }
 
 TEST(CollisionTimeSpaceChecker, collision) {
-  auto &checker = Kinodynamic::checker;
-  auto &connector = Kinodynamic::connector;
-  auto &sampler = Kinodynamic::sampler;
-  auto &env = Kinodynamic::robosoccer_env;
+  auto &checker = Kinodynamic::Wrapper::get_checker();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &env = Kinodynamic::Wrapper::get_robosoccer_env();
 
   using state_t = decltype(sampler());
   state_t s0, s1;
@@ -122,10 +122,10 @@ TEST(CollisionTimeSpaceChecker, collision) {
 }
 
 TEST(CollisionTimeSpaceChecker, collision_free) {
-  auto &checker = Kinodynamic::checker_time_space;
-  auto &connector = Kinodynamic::connector;
-  auto &sampler = Kinodynamic::sampler_dynamic_env;
-  auto &env = Kinodynamic::dynamic_soccer_env;
+  auto &checker = Kinodynamic::Wrapper::get_checker_time_space();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler_dynamic_env();
+  auto &env = Kinodynamic::Wrapper::get_dynamic_soccer_env();
 
   using state_t = decltype(sampler());
   state_t s0, s1;
@@ -141,17 +141,17 @@ TEST(CollisionTimeSpaceChecker, collision_free) {
   EXPECT_FALSE(checker(e)) << s0 << s1;
 }
 
-using RRT = decltype(Kinodynamic::rrtstar_int2d_timespace_obs);
+using RRT = decltype(Kinodynamic::Wrapper::get_rrtstar_int2d_timespace_obs());
 
 TEST(RRT,grow)
 {
-  auto &rrt = Kinodynamic::rrtstar_int2d_timespace_obs;
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &env = Kinodynamic::dynamic_soccer_env;
-  auto &checker = Kinodynamic::checker_time_space;
-  auto &sampler = Kinodynamic::sampler_dynamic_env;
-  auto &goal = Kinodynamic::goal_dynamic_env;
-  auto &connector = Kinodynamic::connector;
+  auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d_timespace_obs();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &env = Kinodynamic::Wrapper::get_dynamic_soccer_env();
+  auto &checker = Kinodynamic::Wrapper::get_checker_time_space();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler_dynamic_env();
+  auto &goal = Kinodynamic::Wrapper::get_goal_dynamic_env();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
   auto min = sampler.rg->min();
   auto max = sampler.rg->max();
 
@@ -253,9 +253,9 @@ TEST(RRT,grow)
 
 TEST(TreeInt2D,retrieve)
 {
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &sampler = Kinodynamic::sampler;
-  auto &connector = Kinodynamic::connector;
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
   auto n = 100;
   auto s = sampler();
   auto ls = s;
@@ -277,9 +277,9 @@ TEST(TreeInt2D,retrieve)
 
 TEST(TreeInt2D,parent)
 {
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &sampler = Kinodynamic::sampler;
-  auto &connector = Kinodynamic::connector;
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
   auto n = 100;
   auto s = sampler();
   tree.reset();
@@ -308,9 +308,9 @@ TEST(TreeInt2D,parent)
 
 TEST(TreeInt2D,edge)
 {
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &sampler = Kinodynamic::sampler;
-  auto &connector = Kinodynamic::connector;
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
   auto n = 100;
   auto s = sampler();
   auto le = connector(s, sampler());
@@ -351,9 +351,9 @@ TEST(TreeInt2D,edge)
 
 TEST(Connector, Solve)
 {
-  auto &connector = Kinodynamic::connector;
-  auto &sampler = Kinodynamic::sampler;
-  auto &tree = Kinodynamic::tree_int2d;
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
   tree.reset();
   auto s0 = sampler();
   auto s1 = sampler();
@@ -403,7 +403,7 @@ TEST(Connector, Solve)
 TEST(TrajectorySolver, Solve)
 {
   auto &solver = Models::integrator2d_trj_solver;
-  auto &sampler = Kinodynamic::sampler;
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
   auto s0 = sampler();
   auto s1 = sampler();
   auto trj = solver.solve(s0,s1);
@@ -539,7 +539,7 @@ TEST(Integrator2DGramian, d_opt)
 {
   auto &g = Models::integrator2d_gram;
   auto &tsolver = Models::integrator2d_opt_time_solver;
-  auto &sampler = Kinodynamic::sampler;
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
   auto &int2d = Models::integrator2d;
   auto s0 = sampler();
   auto s1 = sampler();
@@ -616,7 +616,7 @@ TEST(Integrator2DSSCompositeState, composite_state)
 {
   auto &g = Models::integrator2d_gram;
   auto &tsolver = Models::integrator2d_opt_time_solver;
-  auto &sampler = Kinodynamic::sampler;
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
   auto &int2d = Models::integrator2d;
   auto s0 = sampler();
   auto s1 = sampler();
@@ -687,13 +687,13 @@ TEST(RandomGen4, Random) {
 }
 
 TEST(Sampler, Sample) {
-  state_t s0 = Kinodynamic::sampler();
-  state_t s1 = Kinodynamic::sampler();
+  state_t s0 = Kinodynamic::Wrapper::get_sampler()();
+  state_t s1 = Kinodynamic::Wrapper::get_sampler()();
   std::stringstream ss;
   ss << "s0(" << s0(0) << "," << s0(1) << "," << s0(2) << "," << s0(3) << ") "
      << "s1(" << s1(0) << "," << s1(1) << "," << s1(2) << "," << s1(3) << ")";
-  auto min = Kinodynamic::sampler.rg->min();
-  auto max = Kinodynamic::sampler.rg->max();
+  auto min = Kinodynamic::Wrapper::get_sampler().rg->min();
+  auto max = Kinodynamic::Wrapper::get_sampler().rg->max();
   EXPECT_TRUE((s0(0)!=s1(0)) && (s0(0) >= min[0]) && (s1(0) >= min[0]) && (s0(0) <= max[0]) && (s1(0) <= max[0]) &&
       (s0(1)!=s1(1)) && (s0(1) >= min[1]) && (s1(1) >= min[1]) && (s0(1) <= max[1]) && (s1(1) <= max[1]) &&
       (s0(2)!=s1(2)) && (s0(2) >= min[2]) && (s1(2) >= min[2]) && (s0(2) <= max[2]) && (s1(2) <= max[2]) &&
@@ -701,17 +701,17 @@ TEST(Sampler, Sample) {
 }
 
 TEST(GoalChecker, RandomGoal) {
-  auto s0 = Kinodynamic::goal.randomGoal();
-  auto s1 = Kinodynamic::goal.randomGoal();
+  auto s0 = Kinodynamic::Wrapper::get_goal().randomGoal();
+  auto s1 = Kinodynamic::Wrapper::get_goal().randomGoal();
   std::stringstream ss;
-  auto min = Kinodynamic::goal.rg->min();
-  auto max = Kinodynamic::goal.rg->max();
+  auto min = Kinodynamic::Wrapper::get_goal().rg->min();
+  auto max = Kinodynamic::Wrapper::get_goal().rg->max();
   EXPECT_TRUE((s0(0)!=s1(0)) && (s0(0) >= min[0]) && (s1(0) >= min[0]) && (s0(0) <= max[0]) && (s1(0) <= max[0]) &&
       (s0(1)!=s1(1)) && (s0(1) >= min[1]) && (s1(1) >= min[1]) && (s0(1) <= max[1]) && (s1(1) <= max[1])) << ss.str();
 }
 
 TEST(Environment, Random) {
-  auto &env = Kinodynamic::robosoccer_env;
+  auto &env = Kinodynamic::Wrapper::get_robosoccer_env();
   env.setRandomObstacles();
   auto o1 = env.obs;
   env.setRandomObstacles();

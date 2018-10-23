@@ -14,8 +14,8 @@ int main(int argc, char** argv)
   Models::init_integrator2d();
   RRTVisual vis(node);
 
-  auto &rrt = Kinodynamic::rrtstar_int2d;
-  auto &tree = Kinodynamic::tree_int2d;
+  auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
 
   auto xs = Kinodynamic::state_t();
   auto xg = Kinodynamic::state_t();
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
   if(!node.getParam("/target_tree_size",target_tree_size))
     target_tree_size = 2000;
   if(node.getParam("/neighbor_radius_scale",neighbor_radius_scale))
-    Kinodynamic::radius.scale = neighbor_radius_scale;
+    Kinodynamic::Wrapper::get_radius().scale = neighbor_radius_scale;
 
   std::string dir("1");
   std::string motion_dir;
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
   std::array<std::tuple<double,double>,9> obs;
   for(auto& o : obs)
     o = std::make_tuple(13.0,9.0);
-  Kinodynamic::checker.env = Robosoccer<double,9>(obs);
+  Kinodynamic::Wrapper::get_checker().env = Robosoccer<double,9>(obs);
 
   tree_file = motion_dir + dir + "/tree.txt";
   parent_file = motion_dir + dir + "/parent.txt";
@@ -112,13 +112,13 @@ int main(int argc, char** argv)
 
   if(status == UNFINISHED) {
     tree.from_text(tree_file, parent_file, trajectory_file);
-    Kinodynamic::checker.from_text(environment_file);
+    Kinodynamic::Wrapper::get_checker().from_text(environment_file);
   }
   else {
 #ifndef NO_OBS
-    Kinodynamic::checker.setRandomObstacles();
+    Kinodynamic::Wrapper::get_checker().setRandomObstacles();
 #endif
-    xs = Kinodynamic::sampler();
+    xs = Kinodynamic::Wrapper::get_sampler()();
     rrt.setStart(xs);
   }
 
@@ -135,8 +135,8 @@ int main(int argc, char** argv)
        || (first_draw)) {
       first_draw = false;
       ROS_INFO("adding visual..");
-      auto r = Kinodynamic::checker.env.collision_radius;
-      for(const auto &o : Kinodynamic::checker.env.obs)
+      auto r = Kinodynamic::Wrapper::get_checker().env.collision_radius;
+      for(const auto &o : Kinodynamic::Wrapper::get_checker().env.obs)
         vis.add_obstacles(std::get<0>(o),std::get<1>(o),r);
       vis.set_trajectories(tree.tree.cloud.states, tree.trajectories, tree.parent, 2, tree_size);
       ROS_INFO("publish visual..");
@@ -153,7 +153,7 @@ int main(int argc, char** argv)
       info_stream << info_data.str();
       info_stream.close();
       tree.dump_text(tree_file,parent_file,trajectory_file);
-      Kinodynamic::checker.dump_text(environment_file, collision_file);
+      Kinodynamic::Wrapper::get_checker().dump_text(environment_file, collision_file);
       tree.reset();
 
       // create new directory
@@ -171,8 +171,8 @@ int main(int argc, char** argv)
       }
 
       // new sample
-      Kinodynamic::checker.setRandomObstacles();
-      xs = Kinodynamic::sampler();
+      Kinodynamic::Wrapper::get_checker().setRandomObstacles();
+      xs = Kinodynamic::Wrapper::get_sampler()();
       rrt.setStart(xs);
       rrt.setIteration(0);
     }
@@ -185,7 +185,7 @@ int main(int argc, char** argv)
   info_stream << info_data.str();
   info_stream.close();
   tree.dump_text(tree_file,parent_file,trajectory_file);
-  Kinodynamic::checker.dump_text(environment_file, collision_file);
+  Kinodynamic::Wrapper::get_checker().dump_text(environment_file, collision_file);
 
   // test trajectory
   /*

@@ -33,8 +33,7 @@ template<typename Scalar = double, typename State = state_t, int dim = State::di
 struct TimeState : std::tuple<Scalar,State>
 {
   TimeState() {}
-  TimeState<Scalar,State>& operator = (const std::tuple<Scalar,State>& rhs)
-  {
+  TimeState<Scalar, State, dim> &operator =(const std::tuple<Scalar,State>& rhs) {
     std::get<0>(*this) = std::get<0>(rhs);
     std::get<1>(*this) = std::get<1>(rhs);
     return *this;
@@ -58,21 +57,23 @@ struct Trajectory : std::array<TimeState<Scalar,State>,n+1>
     for(size_t i=0; i<=n; i++)
       (*this)[i] = t[i];
   }
-  Trajectory(){
+  Trajectory() {
     for(size_t i=0; i<=n; i++)
       (*this)[i] = std::make_tuple(Scalar(0.0),state_t());
   }
-  Trajectory(const state_t &s){
+  Trajectory(const state_t &s) {
     for(size_t i=0; i<=n; i++)
       (*this)[i] = std::make_tuple(Scalar(0.0),s);
   }
-  std::array<Scalar,n+1> time() const {
+  std::array<Scalar,n+1> time() const
+  {
     std::array<Scalar,n+1> ret;
     for(size_t i=0; i<=n; i++)
       ret[i] = std::get<0>((*this)[i]);
     return ret;
   }
-  Trajectory<Scalar,State,n> operator + (const Scalar &t) {
+  Trajectory<Scalar,State,n> operator + (const Scalar &t)
+  {
     auto trajectory = *this;
     for(auto & trj: trajectory)
       std::get<0>(trj) += t;
@@ -93,17 +94,8 @@ template <typename T, typename S, int n> using Trajectories = std::vector<Trajec
 struct CostInt2D
 {
   typedef scalar Scalar;
-  CostInt2D(Models::Integrator2DTrajectorySolver &solver) : solver(solver) {}
-  Scalar operator()(const state_t& s0, const state_t& s1) const
-  {
-    Models::Integrator2DSS::StateType xi;
-    Models::Integrator2DSS::StateType xf;
-    for(size_t i=0; i<4; i++) {
-      xi(i) = s0(i);
-      xf(i) = s1(i);
-    }
-    return std::get<1>(solver.cost(xi,xf));
-  }
+  CostInt2D(Models::Integrator2DTrajectorySolver &solver);
+  Scalar operator()(const state_t& s0, const state_t& s1) const;
   Models::Integrator2DTrajectorySolver &solver;
 };
 
@@ -113,12 +105,11 @@ struct Connector
 {
   typedef Trajectory<scalar,state_t,segment> Edge;
 
-  Connector(Models::Integrator2DTrajectorySolver &solver, TreeInt2D &tree)
-    : solver(solver), tree(tree) {}
+  Connector(Models::Integrator2DTrajectorySolver &solver, TreeInt2D &tree);
   inline
-  Edge operator()(const state_t &s0, const state_t &s1) ;
+  auto operator()(const state_t &s0, const state_t &s1);
   inline
-  Edge last_connection()
+  auto last_connection()
   {
     return e;
   }
@@ -138,7 +129,7 @@ struct TreeInt2D
   TreeInt2D() {}
 
   inline
-  IndexList nearest(const State &s0, const scalar& radius)
+  auto nearest(const State &s0, const scalar& radius)
   {
     IndexList ret;
     auto vp = tree.nearest(s0,radius);
@@ -148,7 +139,7 @@ struct TreeInt2D
   }
 
   inline
-  StateList states(const IndexList &indexes)
+  auto states(const IndexList &indexes)
   {
     StateList ret;
     for(const auto &i : indexes)
@@ -157,7 +148,7 @@ struct TreeInt2D
   }
 
   inline
-  Index insert(const State &s, const Index &idx)
+  auto insert(const State &s, const Index &idx)
   {
     Index id = tree.size();
     auto e = Trajectory<scalar,state_t,segment>(s);
@@ -168,27 +159,21 @@ struct TreeInt2D
   }
 
   inline
-  Index insert(const State &s, const Index &idx, const Connector::Edge &e)
+  auto insert(const State &s, const Index &idx, const Connector::Edge &e)
   {
     Index id = tree.size();
     tree.addPoint(s);
     parent.push_back(idx);
     auto edge = e;
     // if(idx >= 0) {
-      // auto t = std::get<0>(trajectories.at(idx).back());
-      // edge = edge + t;
+    // auto t = std::get<0>(trajectories.at(idx).back());
+    // edge = edge + t;
     // }
     trajectories.push_back(edge);
     return id;
   }
 
-  void reset()
-  {
-    last_checked_idx = -1;
-    tree.clear();
-    parent.clear();
-    trajectories.clear();
-  }
+  void reset();
 
   inline
   void setParent(const Index &node, const Index &p)
@@ -203,8 +188,8 @@ struct TreeInt2D
   {
     auto edge = e;
     // if(parent.at(n) >= 0) {
-      // auto t = std::get<0>(trajectories.at(parent.at(n)).back());
-      // edge = edge + t;
+    // auto t = std::get<0>(trajectories.at(parent.at(n)).back());
+    // edge = edge + t;
     // }
     if(int(trajectories.size()) < n+1)
       trajectories.push_back(edge);
@@ -213,119 +198,22 @@ struct TreeInt2D
 
   // const State& operator()(const Index &i) const
   // {
-    // last_checked_idx = i;
-    // return tree(i);
+  // last_checked_idx = i;
+  // return tree(i);
   // }
 
   inline
-  State& operator()(const Index &i)
+  auto& operator()(const Index &i)
   {
     last_checked_idx = i;
     return tree(i);
   }
 
-  void dump_text(const std::string &node_file, const std::string &parent_file, const std::string &trajectory_file)
-  {
-    Logger logger;
-    for(const auto& n : tree.cloud.states)
-      logger << "("
-             << n(0) << "," << n(1) << ","
-             << n(2) << "," << n(3) << ","
-             << n.cost()
-             << ")\n";
-    logger.save(node_file);
-    logger.clear();
+  void dump_text(const std::string &node_file, const std::string &parent_file, const std::string &trajectory_file);
 
-    for(const auto &p : parent)
-      logger << p << "\n";
-    logger.save(parent_file);
-    logger.clear();
+  void from_text(const std::string &node_file, const std::string &parent_file, const std::string &trajectory_file);
 
-    for(const auto &trj : trajectories) {
-      for(size_t i=0; i<=segment; i++)
-      {
-        const auto &t = trj[i];
-        auto p = std::get<1>(t);
-        logger << "("
-               << std::get<0>(t) << ","
-               << p(0) << "," << p(1) << ","
-               << p(2) << "," << p(3)
-               << ") ";
-      }
-      logger << "\n";
-    }
-    logger.save(trajectory_file);
-    logger.clear();
-  }
-
-  void from_text(const std::string &node_file, const std::string &parent_file, const std::string &trajectory_file)
-  {
-    std::ifstream tree_stream(node_file);
-    std::ifstream parent_stream(parent_file);
-    std::ifstream trajectory_stream(trajectory_file);
-    std::string line;
-
-    tree.clear();
-    parent.clear();
-    trajectories.clear();
-
-    while(std::getline(tree_stream, line)) {
-      line.erase(std::remove(line.begin(), line.end(), '('), line.end());
-      line.erase(std::remove(line.begin(), line.end(), ')'), line.end());
-      std::string s;
-      std::vector<std::string> values;
-      std::istringstream ss(line);
-      while(std::getline(ss,s,','))
-        values.push_back(s);
-      state_t state;
-      // std::cout << line << std::endl;
-      for(size_t i=0; i<4; i++)
-        state[i] = std::stod(values[i]);
-      state.setCost(std::stod(values.back()));
-      tree.addPoint(state);
-    }
-    while(std::getline(parent_stream, line))
-      parent.push_back(std::stoi((line)));
-    while(std::getline(trajectory_stream, line)) {
-      std::string s;
-      std::vector<std::string> values;
-      std::istringstream ss(line);
-      Trajectory<scalar,state_t,segment> trajectory;
-      while(std::getline(ss, s, ' '))
-        values.push_back(s);
-      for(size_t i=0; i<values.size(); i++) {
-        auto& str = values.at(i);
-        str.erase(std::remove(str.begin(), str.end(), '('), str.end());
-        str.erase(std::remove(str.begin(), str.end(), ')'), str.end());
-        std::string sstr;
-        std::istringstream sss(str);
-        std::vector<std::string> states;
-        state_t state;
-        while(std::getline(sss, sstr, ','))
-          states.push_back(sstr);
-        // std::cout << str << std::endl;
-        auto time = std::stod(states.front());
-        for(size_t k=1; k<=4; k++)
-          state[k-1] = std::stold(states.at(k));
-        trajectory.at(i) = std::make_tuple(time,state);
-      }
-      trajectories.push_back(trajectory);
-    }
-
-    tree_stream.close();
-    parent_stream.close();
-    trajectory_stream.close();
-  }
-
-  Trajectories<scalar,state_t,segment> get_trajectory(Index idx) {
-    auto i = idx;
-    Trajectories<scalar,state_t,segment> sol;
-    while(i>0) {
-      sol.push_back(trajectories[i]);
-      i = parent[i];
-    }
-    return sol;
-  }
+  Trajectories<scalar,state_t,segment> get_trajectory(Index idx);
 
   int last_checked_idx = -1;
   IndexList parent;
@@ -333,13 +221,13 @@ struct TreeInt2D
   Trajectories<scalar,state_t,segment> trajectories;
 };
 
-inline
-Connector::Edge Connector::operator()(const state_t &s0, const state_t &s1) {
+auto Connector::operator()(const state_t &s0, const state_t &s1)
+{
   // Models::Integrator2DSS::StateType xi;
   // Models::Integrator2DSS::StateType xf;
   // for(size_t i=0; i<4; i++) {
-    // xi(i) = s0(i);
-    // xf(i) = s1(i);
+  // xi(i) = s0(i);
+  // xf(i) = s1(i);
   // }
   auto trajectory = solver.solve<segment>(s0, s1);
   auto ti_idx = tree.last_checked_idx;
@@ -363,40 +251,16 @@ Connector::Edge Connector::operator()(const state_t &s0, const state_t &s1) {
 
 struct CollisionTimeSpaceChecker
 {
-  CollisionTimeSpaceChecker(Models::Integrator2DTrajectorySolver& solver, DynamicRobosoccer<scalar,obs_count> &env)
-    : solver(solver), env(env)
-  {
-    rg = new RandomGen<4,scalar>(
-    {-SAMPLE_X0,-SAMPLE_X1,-SAMPLE_X2,-SAMPLE_X3},
-    {SAMPLE_X0,SAMPLE_X1,SAMPLE_X2,SAMPLE_X3}
-          );
-  }
+  CollisionTimeSpaceChecker(Models::Integrator2DTrajectorySolver& solver, DynamicRobosoccer<scalar,obs_count> &env);
 
-  void setRandomObstacles() {
-    for(auto& o : env.obs) {
-      (*rg)(o);
-    }
-  }
+  void setRandomObstacles();
 
-  bool operator() (const Connector::Edge &e) {
-    auto collision = false;
-    for(size_t i=1; i<e.size(); i++) {
-      const auto &ts1 = e[i];
-      const auto &ts0 = e[i-1];
-      const auto &s1 = std::get<1>(ts1);
-      const auto &t1 = std::get<0>(ts1);
-      const auto &s0 = std::get<1>(ts0);
-      const auto &t0 = std::get<0>(ts0);
-      collision = env.collide<0,1>(s0,s1,t0,t1);
-      if(collision) break;
-    }
-    return collision;
-  }
+  bool operator() (const Connector::Edge &e);
 
-//  bool operator() (const state_t &s0, const state_t &s1) const
-//  {
+  //  bool operator() (const state_t &s0, const state_t &s1) const
+  //  {
 
-//  }
+  //  }
 
   Models::Integrator2DTrajectorySolver &solver;
   DynamicRobosoccer<scalar,obs_count> &env;
@@ -405,103 +269,19 @@ struct CollisionTimeSpaceChecker
 
 struct CollisionChecker
 {
-  CollisionChecker(Models::Integrator2DTrajectorySolver &solver, Robosoccer<scalar,obs_count> &env)
-    : solver(solver), env(env)
-  {
-    rg = new RandomGen<2,scalar>({-SAMPLE_X0,-SAMPLE_X1},{SAMPLE_X0,SAMPLE_X1});
-  }
+  CollisionChecker(Models::Integrator2DTrajectorySolver &solver, Robosoccer<scalar,obs_count> &env);
 
 #ifndef __NVCC__
-  void dump_text(const std::string &env_file, const std::string &collision_file) {
-    Logger logger;
-    for(const auto &o : env.obs)
-      logger << std::get<0>(o) << " " << std::get<1>(o) << '\n';
-    logger.save(env_file);
+  void dump_text(const std::string &env_file, const std::string &collision_file);
 
-    /*
-    logger.clear();
-    for(const auto& c : collisions)
-      logger << "(" << std::get<0>(c) << "," << std::get<1>(c) << ")\n";
-    logger.save(collision_file);
-    */
-  }
+  void from_text(const std::string &file);
 
-  void from_text(const std::string &file) {
-    std::string str;
-    std::ifstream stream(file);
-    int i=0;
-    while(std::getline(stream, str)) {
-      std::vector<std::string> vstr;
-      std::istringstream istr(str);
-      std::string sstr;
-      while(std::getline(istr, sstr, ' '))
-        vstr.push_back(sstr);
-      env.obs.at(i) = std::make_tuple(std::stold(vstr.at(0)),std::stold(vstr.at(1)));
-      i++;
-    }
-    stream.close();
-  }
-
-  void setRandomObstacles() {
-    for(auto& o : env.obs) {
-      std::get<0>(o) = (*rg)(0);
-      std::get<1>(o) = (*rg)(1);
-    }
-    collisions.clear();
-  }
+  void setRandomObstacles();
 #endif
 
-  bool operator() (const Connector::Edge &e) {
-#ifdef NO_OBS
-    return false;
-#else
-    auto path = e.path();
-    bool collision = false;
-    for(size_t i=1; i<path.size(); i++) {
-      const auto &p0 = path[i-1];
-      const auto &p1 = path[i];
-      if(env.collide<0,1>(p0) || env.collide<0,1>(p1))
-        collision = true;
-      if(env.collide<0,1>(path[i-1],path[i]))
-        collision = true;
-      if(collision)
-        break;
-    }
-    /*
-    if(collision)
-      collisions.push_back(std::make_tuple(path.front(),path.back()));
-      */
-    return collision;
-#endif
-  }
+  bool operator() (const Connector::Edge &e);
 
-  bool operator() (const state_t &s0, const state_t &s1) const
-  {
-#ifdef NO_OBS
-    return false;
-#else
-    bool collision = false;
-
-    if(env.collide(s1))
-      collision = true;
-
-    if(env.collide(s0))
-      collision = true;
-
-    if(!collision) {
-      auto trajectory = solver.solve<segment>(s0,s1);
-      for(size_t i=1; i<trajectory.size(); i++) {
-        const auto &t0 = std::get<1>(trajectory[i-1]);
-        const auto &t1 = std::get<1>(trajectory[i]);
-        if(env.collide(t0,t1)) {
-          collision = true;
-          break;
-        }
-      }
-    }
-    return collision;
-#endif
-  }
+  bool operator() (const state_t &s0, const state_t &s1) const;
 
   std::vector<std::tuple<state_t,state_t>> collisions;
   Models::Integrator2DTrajectorySolver &solver;
@@ -533,7 +313,7 @@ struct Sampler
   }
 
   inline
-  state_t operator()()
+  auto operator()()
   {
     if((direct_sampling_enable) && (*direct_sampler)(0)) {
       s = target;
@@ -542,16 +322,16 @@ struct Sampler
       (*rg)(s);
       // for now dont compile this on cuda
       // @TODO : fix
-  #ifndef __NVCC__
+#ifndef __NVCC__
       while(env.collide(s))
         (*rg)(s);
-  #endif
+#endif
     }
     return s;
   }
 
   inline
-  state_t last_sample()
+  auto last_sample()
   {
     return s;
   }
@@ -571,8 +351,9 @@ struct GoalChecker
     rg = new RandomGen<2,scalar>({-SAMPLE_X0,-SAMPLE_X1},{SAMPLE_X0,SAMPLE_X1});
   }
   inline
-  bool operator()(const state_t &state) {
-    // for now, iterate indefinetly
+  bool operator()(const state_t &state)
+  {
+    // this implementation requires exact goal, so just return false for this fn
     return false;
   }
   state_t randomGoal() {
@@ -581,10 +362,10 @@ struct GoalChecker
     (*rg)(s);
     // for now dont compile this on cuda
     // todo resolve
-#ifndef __NVCC__
+  #ifndef __NVCC__
     while(env.collide(s))
       (*rg)(s);
-#endif
+  #endif
     return s;
   }
 
@@ -592,24 +373,25 @@ struct GoalChecker
   RandomGen<2,scalar> *rg;
 };
 
-struct NeighborRadius
-{
 #define SOME_CONSTANT (10.0)
 #define SAMPLE_VOLUME (SAMPLE_X0*SAMPLE_X1*SAMPLE_X2*SAMPLE_X3)*(2*2*2*2)
-  NeighborRadius() { s = std::pow(2,4)*(1+1/4)*SAMPLE_VOLUME; }
-  double operator()(const TreeInt2D::Index &i) {
-    return s*scale*std::log(i+1)/(i+1);
-  }
+
+struct NeighborRadius
+{
+  NeighborRadius();
+  double operator()(const TreeInt2D::Index &i);
   double s;
   double scale = SOME_CONSTANT;
 };
 
-TreeInt2D tree_int2d;
-
 typedef Robosoccer<scalar,obs_count> StaticEnvironment;
 typedef DynamicRobosoccer<scalar,obs_count> DynamicEnvironment;
+
+#if 0
+TreeInt2D tree_int2d;
+
 StaticEnvironment robosoccer_env;
-DynamicEnvironment dynamic_soccer_env;
+Environment dynamic_soccer_env;
 
 // don't instantiate these object if use cuda
 #ifndef __NVCC__
@@ -625,7 +407,6 @@ GoalChecker<DynamicEnvironment> goal_dynamic_env(dynamic_soccer_env);
 GoalChecker goal(robosoccer_env);
 GoalChecker goal_dynamic_env(dynamic_soccer_env);
 #endif
-
 // automatic template class deduction, need c++17 (gcc >= 7)
 #if (__GNUC__ < 7) || defined(__NVCC__)
 Sampler<StaticEnvironment> sampler(robosoccer_env);
@@ -634,9 +415,57 @@ Sampler<DynamicEnvironment> sampler_dynamic_env(dynamic_soccer_env);
 Sampler sampler(robosoccer_env);
 Sampler sampler_dynamic_env(dynamic_soccer_env);
 #endif
+#else
 
-NeighborRadius radius;
+typedef RRTStar
+<TreeInt2D,CostInt2D,Sampler<StaticEnvironment>,NeighborRadius,CollisionChecker,GoalChecker<StaticEnvironment>,Connector>
+RRTStarInt2D;
 
+typedef RRTStar
+<TreeInt2D,CostInt2D,Sampler<DynamicEnvironment>,NeighborRadius,CollisionTimeSpaceChecker,GoalChecker<DynamicEnvironment>,Connector>
+RRTStarInt2DTimeSpaceObs;
+
+class Wrapper
+{
+  Wrapper() {}
+  static Models::Integrator2D integrator2d;
+  static TreeInt2D *tree_int2d;
+  static StaticEnvironment *robosoccer_env;
+  static DynamicEnvironment *dynamic_soccer_env;
+  static CostInt2D *cost_int2d;
+  static Connector *connector;
+  static GoalChecker<StaticEnvironment> *goal;
+  static GoalChecker<DynamicEnvironment> *goal_dynamic_env;
+  static Sampler<StaticEnvironment> *sampler;
+  static Sampler<DynamicEnvironment> *sampler_dynamic_env;
+  static NeighborRadius *radius;
+  static CollisionChecker *checker;
+  static CollisionTimeSpaceChecker *checker_time_space;
+  static RRTStarInt2D *rrtstar_int2d;
+  static RRTStarInt2DTimeSpaceObs *rrtstar_int2d_timespace_obs;
+
+  static void initialize();
+
+public:
+  static TreeInt2D &get_tree_int2d();
+  static StaticEnvironment &get_robosoccer_env();
+  static DynamicEnvironment &get_dynamic_soccer_env();
+  static CostInt2D &get_cost_int2d();
+  static Connector &get_connector();
+  static GoalChecker<StaticEnvironment> &get_goal();
+  static GoalChecker<DynamicEnvironment> &get_goal_dynamic_env();
+  static Sampler<StaticEnvironment> &get_sampler();
+  static Sampler<DynamicEnvironment> &get_sampler_dynamic_env();
+  static NeighborRadius &get_radius();
+  static CollisionChecker &get_checker();
+  static CollisionTimeSpaceChecker &get_checker_time_space();
+  static RRTStarInt2D &get_rrtstar_int2d();
+  static RRTStarInt2DTimeSpaceObs &get_rrtstar_int2d_timespace_obs();
+};
+#endif
+
+
+#if 0
 // dont instantiate these object if compile using cuda
 #ifndef __NVCC__
 CollisionChecker checker(Models::integrator2d_trj_solver, robosoccer_env);
@@ -658,9 +487,8 @@ RRTStarInt2DTimeSpaceObs;
 RRTStarInt2D rrtstar_int2d(tree_int2d, cost_int2d, sampler, checker, radius, goal, connector);
 RRTStarInt2DTimeSpaceObs rrtstar_int2d_timespace_obs(tree_int2d, cost_int2d, sampler_dynamic_env, checker_time_space, radius, goal_dynamic_env, connector);
 #endif
-
+#endif
 #endif
 }
-
 
 #endif // INTEGRATOR2DRRT_HPP

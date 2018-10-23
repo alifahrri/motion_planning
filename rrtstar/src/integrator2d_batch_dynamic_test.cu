@@ -28,18 +28,18 @@ int main(int argc, char** argv)
   if(!node.getParam("/target_tree_size",target_tree_size))
     target_tree_size = 5000;
   if(node.getParam("/neighbor_radius_scale",neighbor_radius_scale))
-    Kinodynamic::radius.scale = neighbor_radius_scale;
+    Kinodynamic::Wrapper::get_radius().scale = neighbor_radius_scale;
 
-  // auto &rrt = Kinodynamic::rrtstar_int2d;
-  // auto &rrt = Kinodynamic::rrtstar_int2d_timespace_obs;
+  // auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d();
+  // auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d_timespace_obs();
   auto &rrt = Kinodynamic::rrtstar_batch_int2d_timespace_obs;
-  auto &tree = Kinodynamic::tree_int2d;
-  // auto &env = Kinodynamic::dynamic_soccer_env;
-  auto &env = Kinodynamic::dynamic_soccer_env_cuda;
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  // auto &env = Kinodynamic::Wrapper::get_dynamic_soccer_env();
+  auto &env = Kinodynamic::Wrapper::get_dynamic_soccer_env()_cuda;
 
   env.setRandomObstacles();
-  auto xg = Kinodynamic::goal_dynamic_env.randomGoal();
-  auto xs = Kinodynamic::sampler();
+  auto xg = Kinodynamic::Wrapper::get_goal_dynamic_env().randomGoal();
+  auto xs = Kinodynamic::Wrapper::get_sampler()();
   rrt.setStart(xs);
   // rrt.setIteration(0);
 

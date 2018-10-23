@@ -30,8 +30,8 @@ static void opt_time_solver(benchmark::State &state) {
 BENCHMARK(opt_time_solver);
 
 static void control(benchmark::State &state) {
-  auto &connector = Kinodynamic::connector;
-  auto &sampler = Kinodynamic::sampler_dynamic_env;
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler_dynamic_env();
   auto s0 = sampler();
   auto s1 = sampler();
 
@@ -41,10 +41,10 @@ static void control(benchmark::State &state) {
 BENCHMARK(control);
 
 static void collision_static_env(benchmark::State &state) {
-  auto &env = Kinodynamic::robosoccer_env;
-  auto &connector = Kinodynamic::connector;
-  auto &collision = Kinodynamic::checker;
-  auto &sampler = Kinodynamic::sampler;
+  auto &env = Kinodynamic::Wrapper::get_robosoccer_env();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &collision = Kinodynamic::Wrapper::get_checker();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
   auto s0 = sampler();
   auto s1 = sampler();
   auto edge = connector(s0, s1);
@@ -56,10 +56,10 @@ static void collision_static_env(benchmark::State &state) {
 BENCHMARK(collision_static_env);
 
 static void collision_dynamic_env(benchmark::State &state) {
-  auto &env = Kinodynamic::dynamic_soccer_env;
-  auto &connector = Kinodynamic::connector;
-  auto &collision = Kinodynamic::checker_time_space;
-  auto &sampler = Kinodynamic::sampler_dynamic_env;
+  auto &env = Kinodynamic::Wrapper::get_dynamic_soccer_env();
+  auto &connector = Kinodynamic::Wrapper::get_connector();
+  auto &collision = Kinodynamic::Wrapper::get_checker_time_space();
+  auto &sampler = Kinodynamic::Wrapper::get_sampler_dynamic_env();
   auto s0 = sampler();
   auto s1 = sampler();
   auto edge = connector(s0, s1);
@@ -81,18 +81,18 @@ static void tree_insert_args(benchmark::internal::Benchmark *b) {
 }
 
 static void tree_nearest(benchmark::State &state) {
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &radius = Kinodynamic::radius;
-  auto xs = Kinodynamic::sampler();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &radius = Kinodynamic::Wrapper::get_radius();
+  auto xs = Kinodynamic::Wrapper::get_sampler()();
   tree.reset();
   auto n = state.range(0);
   tree.insert(xs, -1);
   for(size_t i=0; i<n; i++) {
-    auto x = Kinodynamic::sampler();
+    auto x = Kinodynamic::Wrapper::get_sampler()();
     tree.insert(x,0);
   }
 
-  auto x = Kinodynamic::sampler();
+  auto x = Kinodynamic::Wrapper::get_sampler()();
   for(auto _ : state) {
     tree.nearest(x,radius(n));
   }
@@ -100,13 +100,13 @@ static void tree_nearest(benchmark::State &state) {
 BENCHMARK(tree_nearest)->Apply(tree_nearest_args);
 
 static void tree_insert(benchmark::State &state) {
-  auto &tree = Kinodynamic::tree_int2d;
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
   tree.reset();
   auto n = state.range(0);
 
   for(auto _ : state) {
     for(size_t i=0; i<n; i++) {
-      auto x = Kinodynamic::sampler();
+      auto x = Kinodynamic::Wrapper::get_sampler()();
       tree.insert(x,0);
     }
   }
@@ -114,22 +114,22 @@ static void tree_insert(benchmark::State &state) {
 BENCHMARK(tree_insert)->Apply(tree_insert_args);
 
 static void cost(benchmark::State &state) {
-  auto &cost = Kinodynamic::cost_int2d;
-  auto xi = Kinodynamic::sampler();
-  auto xf = Kinodynamic::sampler();
+  auto &cost = Kinodynamic::Wrapper::get_cost_int2d();
+  auto xi = Kinodynamic::Wrapper::get_sampler()();
+  auto xf = Kinodynamic::Wrapper::get_sampler()();
   for(auto _ : state)
     cost(xi, xf);
 }
 BENCHMARK(cost);
 
 static void grow_dynamic_env(benchmark::State &state) {
-  auto &rrt = Kinodynamic::rrtstar_int2d_timespace_obs;
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &env = Kinodynamic::dynamic_soccer_env;
+  auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d_timespace_obs();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &env = Kinodynamic::Wrapper::get_dynamic_soccer_env();
 
   env.setRandomObstacles();
-  auto xg = Kinodynamic::goal_dynamic_env.randomGoal();
-  auto xs = Kinodynamic::sampler();
+  auto xg = Kinodynamic::Wrapper::get_goal_dynamic_env().randomGoal();
+  auto xs = Kinodynamic::Wrapper::get_sampler()();
   rrt.setStart(xs);
 
   auto n = state.range(0);
@@ -148,18 +148,18 @@ BENCHMARK(grow_dynamic_env)->ComputeStatistics("solved",[](const std::vector<dou
 })->Range(10, 1000);
 
 static void neighbor_dynamic_env(benchmark::State &state) {
-  auto &rrt = Kinodynamic::rrtstar_int2d_timespace_obs;
-  auto &tree = Kinodynamic::tree_int2d;
-  auto &env = Kinodynamic::dynamic_soccer_env;
-  auto &radius = Kinodynamic::radius;
+  auto &rrt = Kinodynamic::Wrapper::get_rrtstar_int2d_timespace_obs();
+  auto &tree = Kinodynamic::Wrapper::get_tree_int2d();
+  auto &env = Kinodynamic::Wrapper::get_dynamic_soccer_env();
+  auto &radius = Kinodynamic::Wrapper::get_radius();
 
   auto n = state.range(0);
   double scale = (double(state.range(1))/10.0f);
   radius.scale = scale;
 
   env.setRandomObstacles();
-  auto xg = Kinodynamic::goal_dynamic_env.randomGoal();
-  auto xs = Kinodynamic::sampler();
+  auto xg = Kinodynamic::Wrapper::get_goal_dynamic_env().randomGoal();
+  auto xs = Kinodynamic::Wrapper::get_sampler()();
   rrt.setStart(xs);
 
   for(auto _ : state) {

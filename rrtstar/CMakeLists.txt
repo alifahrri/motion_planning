@@ -8,6 +8,7 @@ if(NOT CMAKE_BUILD_TYPE)
   add_definitions(-DNDEBUG)
 endif()
 
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -76,7 +77,7 @@ PKG_CHECK_MODULES(nanoflann REQUIRED nanoflann)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES rrtstar
+  LIBRARIES rrtstar_integrator2d
   CATKIN_DEPENDS roscpp visualization_msgs
   DEPENDS GTest
 )
@@ -90,62 +91,48 @@ catkin_package(
 include_directories(
  include
   ${catkin_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}
 )
-
-INCLUDE_DIRECTORIES(.)
-INCLUDE_DIRECTORIES(include)
 
 add_library(integrator2d_model include/integrator2d.hpp include/integrator.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/statespace.hpp include/statespacesolver.hpp)
 target_link_libraries(integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 set_target_properties(integrator2d_model PROPERTIES LINKER_LANGUAGE CXX)
 
-add_library(rrtstar include/integrator2drrt.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp)
-target_link_libraries(rrtstar integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-set_target_properties(rrtstar PROPERTIES LINKER_LANGUAGE CXX)
+#add_library(rrtstar include/integrator2drrt.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp src/rrtstar/intergrator2drrt.cpp)
+add_library(rrtstar_integrator2d src/rrtstar/integrator2drrt.cpp)
+target_link_libraries(rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+#set_target_properties(rrtstar PROPERTIES LINKER_LANGUAGE CXX)
+
+add_executable(${PROJECT_NAME}_integrator2d_node src/integrator2d_node.cpp)
+add_executable(${PROJECT_NAME}_integrator2d_dynamic_test src/integrator2d_dynamic_test.cpp)
+add_executable(${PROJECT_NAME}_integrator2d_test src/integrator2d_test.cpp)
+add_executable(${PROJECT_NAME}_integrator2d_dataset src/integrator2d_dataset_node.cpp)
+add_executable(${PROJECT_NAME}_geometric3d src/geometric3d_demo.cpp)
+add_executable(${PROJECT_NAME}_geometric2d src/geometric2d_demo.cpp)
+add_executable(${PROJECT_NAME}_unittest test/unittest.cpp)
+add_executable(${PROJECT_NAME}_benchmark test/benchmark.cpp)
 
 if(CUDA_FOUND)
   cuda_add_library(integrator2d_cuda_model include/integrator2d.cuhpp include/fixedtimelqr.cuhpp include/util.cuh)
   target_link_libraries(integrator2d_cuda_model integrator2d_model cuda cudart)
   cuda_add_library(cuda_rrtstar include/integrator2drrt.cuhpp include/environment.cuhpp include/util.cuh)
-  target_link_libraries(cuda_rrtstar integrator2d_cuda_model rrtstar cuda cudart)
-endif()
-
-add_executable(${PROJECT_NAME}_integrator2d src/integrator2d_node.cpp include/integrator2d.hpp include/integrator2drrt.hpp  include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp)
-
-add_executable(${PROJECT_NAME}_integrator2d_dynamic_test src/integrator2d_dynamic_test.cpp)
-
-if(CUDA_FOUND)
+  target_link_libraries(cuda_rrtstar integrator2d_cuda_model rrtstar_integrator2d cuda cudart)
   cuda_add_executable(${PROJECT_NAME}_batch_integrator2d_dynamic_test src/integrator2d_batch_dynamic_test.cu)
   cuda_add_executable(${PROJECT_NAME}_batch_integrator2d_test src/integrator2d_batch_test.cu)
 endif()
 
-#add_executable(${PROJECT_NAME}_integrator2d_dynamic_test src/integrator2d_dynamic_test.cpp include/integrator2d.hpp include/integrator2drrt.hpp include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp)
-
-add_executable(${PROJECT_NAME}_integrator2d_test src/integrator2d_test.cpp include/integrator2d.hpp include/integrator2drrt.hpp include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp)
-
-add_executable(${PROJECT_NAME}_integrator2d_dataset src/integrator2d_dataset_node.cpp include/integrator2drrt.hpp include/integrator2d.hpp include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp)
-
-add_executable(${PROJECT_NAME}_geometric3d src/geometric3d_demo.cpp include/integrator2d.hpp include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/collision.hpp include/random.hpp)
-
-add_executable(${PROJECT_NAME}_geometric2d src/geometric2d_demo.cpp include/integrator2d.hpp include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/collision.hpp include/random.hpp)
-
-add_executable(${PROJECT_NAME}_unittest test/unittest.cpp include/integrator2d.hpp include/integrator2drrt.hpp include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp)
-
-add_executable(${PROJECT_NAME}_benchmark test/benchmark.cpp include/integrator2d.hpp include/integrator2drrt.hpp include/kronecker.hpp include/lyapunovsolver.hpp include/integrator.hpp include/statespace.hpp include/statespacesolver.hpp include/lqrsolver.hpp include/vectorwrapper.hpp include/schursorted.hpp include/timer.hpp include/logger.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/polynomial.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp)
-
-target_link_libraries(${PROJECT_NAME}_integrator2d_dynamic_test ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} rrtstar integrator2d_model)
+target_link_libraries(${PROJECT_NAME}_benchmark ${BENCHMARK_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} benchmark pthread rrtstar_integrator2d integrator2d_model)
+target_link_libraries(${PROJECT_NAME}_unittest rrtstar_integrator2d integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_integrator2d_dynamic_test rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_integrator2d_dataset rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_integrator2d_test rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_integrator2d_node rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_geometric3d rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_geometric2d rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 if(CUDA_FOUND)
   target_link_libraries(${PROJECT_NAME}_batch_integrator2d_dynamic_test ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} cuda_rrtstar integrator2d_cuda_model)
   target_link_libraries(${PROJECT_NAME}_batch_integrator2d_test ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} cuda_rrtstar integrator2d_cuda_model)
 endif()
-target_link_libraries(${PROJECT_NAME}_integrator2d_test ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-target_link_libraries(${PROJECT_NAME}_integrator2d_dataset ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-target_link_libraries(${PROJECT_NAME}_integrator2d ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-target_link_libraries(${PROJECT_NAME}_geometric3d ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-target_link_libraries(${PROJECT_NAME}_geometric2d ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-target_link_libraries(${PROJECT_NAME}_unittest ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-target_link_libraries(${PROJECT_NAME}_benchmark ${BENCHMARK_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} benchmark pthread)
-
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context

@@ -156,7 +156,7 @@ public:
       // given neighboring states, check if the states could be reconnected to the
       // new state with lower cost (rewire)
       for(const auto &n : nearest) {
-        if(n != *parent) {
+        if((n != *parent) && (tree(n) != xr)){
           auto c = cost(xr,tree(n));
           auto nc = tree(n).cost();
           // the cost is lower by reconnecting tree(n) to xr
