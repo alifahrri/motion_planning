@@ -109,7 +109,7 @@ add_executable(${PROJECT_NAME}_integrator2d_test src/integrator2d_test.cpp)
 add_executable(${PROJECT_NAME}_integrator2d_dataset src/integrator2d_dataset_node.cpp)
 add_executable(${PROJECT_NAME}_geometric3d src/geometric3d_demo.cpp)
 add_executable(${PROJECT_NAME}_geometric2d src/geometric2d_demo.cpp)
-add_executable(${PROJECT_NAME}_unittest test/unittest.cpp)
+#add_executable(${PROJECT_NAME}_unittest test/unittest.cpp)
 add_executable(${PROJECT_NAME}_benchmark test/benchmark.cpp)
 
 if(CUDA_FOUND)
@@ -122,7 +122,7 @@ if(CUDA_FOUND)
 endif()
 
 target_link_libraries(${PROJECT_NAME}_benchmark ${BENCHMARK_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} benchmark pthread rrtstar_integrator2d integrator2d_model)
-target_link_libraries(${PROJECT_NAME}_unittest rrtstar_integrator2d integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+#target_link_libraries(${PROJECT_NAME}_unittest rrtstar_integrator2d integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_integrator2d_dynamic_test rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_integrator2d_dataset rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_integrator2d_test rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
@@ -148,3 +148,8 @@ endif()
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+catkin_add_gtest(${PROJECT_NAME}-test test/unittest.cpp)
+if(TARGET ${PROJECT_NAME}-test)
+  target_link_libraries(${PROJECT_NAME}-test rrtstar_integrator2d integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+endif()
