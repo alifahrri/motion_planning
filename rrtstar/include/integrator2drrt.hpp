@@ -233,7 +233,7 @@ auto Connector::operator()(const state_t &s0, const state_t &s1)
   auto ti_idx = tree.last_checked_idx;
   auto t0 = 0.0;
   e = Trajectory<scalar,state_t,segment>(trajectory);
-  if(ti_idx > 0) {
+  if(ti_idx >= 0) {
     t0 = std::get<0>(tree.trajectories.at(ti_idx).back());
     e = e + t0;
   }

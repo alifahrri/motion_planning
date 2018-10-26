@@ -242,7 +242,8 @@ Trajectories<scalar, state_t, segment> TreeInt2D::get_trajectory(TreeInt2D::Inde
   auto i = idx;
   Trajectories<scalar,state_t,segment> sol;
   while(i>0) {
-    sol.push_back(trajectories[i]);
+    // sol.push_back(trajectories[i]);
+    sol.insert(sol.begin(), trajectories[i]);
     i = parent[i];
   }
   return sol;
