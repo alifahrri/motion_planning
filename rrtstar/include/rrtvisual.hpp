@@ -109,7 +109,7 @@ public:
 
   template <size_t dim, size_t x_idx = 0, size_t y_idx = 1, size_t z_idx = 2, typename Iterable>
   inline
-  void add_trajectory(const Iterable &trajectory, double r = 1.0f, double g = 0.0f, double b = 0.0f, double alpha = 1.0f, const std::string &ns = std::string(""))
+  void add_trajectory(const Iterable &trajectory, double r = 1.0f, double g = 0.0f, double b = 0.0f, double alpha = 1.0f, const std::string &ns = std::string(""), double line_scale = LINE_SCALE)
   {
     auto now = ros::Time::now();
     auto nspace = std::string("trajectory") + pfix + ns;
@@ -121,7 +121,7 @@ public:
     line.id = marker_array.markers.size();
     line.header.stamp = now; line.type = type;
     line.header.frame_id = "/map"; line.header.seq = seq;
-    line.scale.x = line.scale.y = line.scale.z = LINE_SCALE;
+    line.scale.x = line.scale.y = line.scale.z = line_scale;
     for(const auto &t : trajectory) {
       geometry_msgs::Point pt;
       pt.x = t(x_idx); pt.y = t(y_idx); pt.z = (dim > 2 ? t(z_idx) : 0.0);
@@ -133,7 +133,7 @@ public:
 
   template <size_t dim, size_t x_idx = 0, size_t y_idx = 1, size_t z_idx = 2, typename Iterable>
   inline
-  void add_trajectories(const Iterable &trajectories, double r = 1.0f, double g = 0.0f, double b = 0.0f, double alpha = 1.0f, const std::string &ns = std::string(""))
+  void add_trajectories(const Iterable &trajectories, double r = 1.0f, double g = 0.0f, double b = 0.0f, double alpha = 1.0f, const std::string &ns = std::string(""), double line_scale = LINE_SCALE, double point_scale = POINT_SCALE)
   {
     visualization_msgs::Marker pts;
     std_msgs::ColorRGBA color;
@@ -145,9 +145,9 @@ public:
     pts.header.stamp = ros::Time::now();
     pts.ns = std::string("points") + pfix + ns;
     pts.type = visualization_msgs::Marker::POINTS;
-    pts.scale.x = pts.scale.y = pts.scale.z = POINT_SCALE;
+    pts.scale.x = pts.scale.y = pts.scale.z = point_scale;
     for(const auto& trajectory : trajectories) {
-      add_trajectory<dim,x_idx,y_idx,z_idx>(trajectory,r,g,b,alpha,ns);
+      add_trajectory<dim,x_idx,y_idx,z_idx>(trajectory,r,g,b,alpha,ns,line_scale);
       add_point<dim,x_idx,y_idx,z_idx>(pts, trajectory.back(),r,g,b,1.0);
     }
     marker_array.markers.push_back(pts);
