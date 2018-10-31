@@ -33,6 +33,9 @@ template<typename Scalar = double, typename State = state_t, int dim = State::di
 struct TimeState : std::tuple<Scalar,State>
 {
   TimeState() {}
+  TimeState(const std::tuple<Scalar,State>& rhs) {
+    *this = rhs;
+  }
   TimeState<Scalar, State, dim> &operator =(const std::tuple<Scalar,State>& rhs) {
     std::get<0>(*this) = std::get<0>(rhs);
     std::get<1>(*this) = std::get<1>(rhs);
@@ -84,6 +87,58 @@ struct Trajectory : std::array<TimeState<Scalar,State>,n+1>
     for(size_t i=0; i<=n; i++)
       ret[i] = std::get<1>((*this)[i]);
     return ret;
+  }
+  // const std::tuple<Scalar,state_t>& operator[](size_t i) const { return trj[i]; }
+  // std::tuple<Scalar,state_t>& operator[](size_t i) { return trj[i]; }
+  // std::array<std::tuple<Scalar,state_t>,n+1> trj;
+};
+
+// Trajectory with dynamic allocator (resizeable vector)
+template<typename Scalar = double, typename State = state_t>
+struct VTrajectory : std::vector<TimeState<Scalar,State>>
+{
+  VTrajectory(const Models::Integrator2DTrajectorySolver::Trajectory &trajectory)
+  {
+    for(const auto &t : trajectory){
+      auto ts = TimeState<Scalar,State>(std::make_tuple(Scalar(std::get<0>(t)),State(std::get<1>(t))));
+      this->push_back(ts);
+    }
+  }
+  VTrajectory(const VTrajectory& t) {
+    // this->insert(this->begin(),t.begin(),t.end());
+    for(const auto &ts : t)
+      this->push_back(ts);
+  }
+  VTrajectory() {
+
+  }
+  auto time() const
+  {
+    std::vector<Scalar> ret;
+    for(const auto &t : *this)
+      ret.push_back(std::get<0>(t));
+    return ret;
+  }
+  auto operator + (const Scalar &t)
+  {
+    auto trajectory = *this;
+    for(auto & trj: trajectory)
+      std::get<0>(trj) += t;
+    return trajectory;
+  }
+  auto path() const {
+    std::vector<State> ret;
+    for(const auto &t : *this)
+      ret.push_back(std::get<1>(t));
+    return ret;
+  }
+  auto insert(const auto &trajectory) {
+    auto vtrajectory = VTrajectory(trajectory);
+    auto tshift = (this->size() ? std::get<0>(this->back()) : 0.0);
+    auto shifted_trajectory = vtrajectory+tshift;
+    // this->insert(this->end(),shifted_trajectory.begin(),shifted_trajectory.end());
+    for(const auto &ts : shifted_trajectory)
+      this->push_back(ts);
   }
   // const std::tuple<Scalar,state_t>& operator[](size_t i) const { return trj[i]; }
   // std::tuple<Scalar,state_t>& operator[](size_t i) { return trj[i]; }
@@ -144,6 +199,18 @@ struct TreeInt2D
     StateList ret;
     for(const auto &i : indexes)
       ret.push_back(tree(i));
+    return ret;
+  }
+
+  inline
+  auto states(const Index &index)
+  {
+    StateList ret;
+    auto i = index;
+    while(i>=0) {
+      ret.insert(ret.begin(), tree(i));
+      i = parent[i];
+    }
     return ret;
   }
 
@@ -312,10 +379,23 @@ struct Sampler
     }
   }
 
+  // set sample after it times () calls
+  void set_next_sample(const state_t &n, size_t it = 1)
+  {
+    ns = n;
+    ns_it = it;
+    counter = 1;
+    next_sample_waiting = true;
+  }
+
   inline
   auto operator()()
   {
-    if((direct_sampling_enable) && (*direct_sampler)(0)) {
+    if((next_sample_waiting) && (counter == ns_it)) {
+      s = ns;
+      next_sample_waiting = false;
+    }
+    else if((direct_sampling_enable) && ((*direct_sampler)(0))) {
       s = target;
     }
     else {
@@ -327,6 +407,7 @@ struct Sampler
         (*rg)(s);
 #endif
     }
+    counter++;
     return s;
   }
 
@@ -337,11 +418,15 @@ struct Sampler
   }
 
   state_t s;
+  state_t ns;
   state_t target;
   Environment &env;
   bool direct_sampling_enable = false;
+  bool next_sample_waiting = false;
   RandomGen<1,bool> *direct_sampler;
   RandomGen<4,scalar> *rg = nullptr;
+  size_t counter = 1;
+  size_t ns_it = 0;
 };
 
 template <typename Environment>
@@ -447,6 +532,7 @@ class Wrapper
   static void initialize();
 
 public:
+  static Models::Integrator2D &get_trajectory_solver();
   static TreeInt2D &get_tree_int2d();
   static StaticEnvironment &get_robosoccer_env();
   static DynamicEnvironment &get_dynamic_soccer_env();
