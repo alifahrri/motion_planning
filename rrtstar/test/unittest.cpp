@@ -700,6 +700,32 @@ TEST(Sampler, Sample) {
       (s0(3)!=s1(3)) && (s0(3) >= min[3]) && (s1(3) >= min[3]) && (s0(3) <= max[3]) && (s1(3) <= max[3])) << ss.str();
 }
 
+TEST(Sampler, set_next_sample)
+{
+  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+  auto &goal = Kinodynamic::Wrapper::get_goal();
+  auto ok = true;
+  auto xg = goal.randomGoal();
+  std::stringstream ss;
+  for(size_t i=0; i<100; i++) {
+    auto s = sampler();
+    if(sampler.last_sample() != s) {
+      ok = false;
+      ss << "failed getting last sample state";
+    }
+    if(i%10==0) {
+      sampler.set_next_sample(xg);
+      s = sampler();
+      if(s!= xg) {
+        ok = false;
+        ss << "failed setting next sample";
+      }
+    }
+    if(!ok) break;
+  }
+  EXPECT_TRUE(ok) << ss.str();
+}
+
 TEST(GoalChecker, RandomGoal) {
   auto s0 = Kinodynamic::Wrapper::get_goal().randomGoal();
   auto s1 = Kinodynamic::Wrapper::get_goal().randomGoal();

@@ -136,15 +136,12 @@ static void grow_dynamic_env(benchmark::State &state) {
   for(auto _ : state) {
     for(size_t i=0; i<n; i++)
       rrt.grow(&xg);
-    benchmark::DoNotOptimize(rrt.goalIndex());
+    // benchmark::DoNotOptimize(rrt.goalIndex());
   }
   // state.SetBytesProcessed(int64_t(state.iterations()) * int64_t(state.range(0)));
 }
-BENCHMARK(grow_dynamic_env)->ComputeStatistics("solved",[](const std::vector<double>& s)->double{
-  auto sol = 0.0;
-  for(const auto v : s)
-    sol = (v>=0.0 ? 1.0 : sol);
-  return sol;
+BENCHMARK(grow_dynamic_env)->ComputeStatistics("min cost",[](const std::vector<double>& v)->double{
+  return *(std::max_element(std::begin(v), std::end(v)));
 })->Range(10, 1000);
 
 static void neighbor_dynamic_env(benchmark::State &state) {
