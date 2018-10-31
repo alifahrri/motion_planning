@@ -35,6 +35,7 @@ struct Integrator2DClosedExpm {
     eAt << 1, 0, t, 0, 0, 1, 0, t, 0, 0, 1, 0, 0, 0, 0, 1;
     return eAt;
   }
+  scalar r = Models::r;
 };
 //typedef StateSpace<Type,SYS_N,SYS_P,SYS_Q> Integrator2DSS;
 typedef StateSpace<scalar,SYS_N,SYS_P,SYS_Q,Integrator2DClosedExpm> Integrator2DSS;
@@ -87,6 +88,7 @@ struct Integrator2DCost
     cost = t + (x2f - x2i)*(4*r*(x2f - x2i)/t - 6*r*(-t*x2i + x0f - x0i)/pow(t, 2)) + (x3f - x3i)*(4*r*(x3f - x3i)/t - 6*r*(-t*x3i + x1f - x1i)/pow(t, 2)) + (-6*r*(x2f - x2i)/pow(t, 2) + 12*r*(-t*x2i + x0f - x0i)/pow(t, 3))*(-t*x2i + x0f - x0i) + (-6*r*(x3f - x3i)/pow(t, 2) + 12*r*(-t*x3i + x1f - x1i)/pow(t, 3))*(-t*x3i + x1f - x1i);
     return cost;
   }
+  scalar r = Models::r;
 } integrator2d_cost;
 struct Integrator2DOptTimeDiff
 {
@@ -103,6 +105,7 @@ struct Integrator2DOptTimeDiff
     return d_cost;
   }
   scalar x0i, x0f, x1i, x1f, x2i, x2f, x3i, x3f;
+  scalar r = Models::r;
 } integrator2d_opt_time_diff;
 struct Integrator2DGramian {
   ATTRIBUTE
@@ -112,6 +115,7 @@ struct Integrator2DGramian {
     G << (1.0/3.0)*pow(t, 3)/r, 0, (1.0/2.0)*pow(t, 2)/r, 0, 0, (1.0/3.0)*pow(t, 3)/r, 0, (1.0/2.0)*pow(t, 2)/r, (1.0/2.0)*pow(t, 2)/r, 0, t/r, 0, 0, (1.0/2.0)*pow(t, 2)/r, 0, t/r;
     return G;
   }
+  scalar r = Models::r;
 } integrator2d_gram;
 struct Integrator2DCmpClosedExpm {
   ATTRIBUTE Eigen::Matrix<scalar,2*SYS_N,2*SYS_N> operator()(scalar t) const
@@ -120,6 +124,7 @@ struct Integrator2DCmpClosedExpm {
     eAt << 1, 0, t, 0, -1.0/6.0*pow(t, 3)/r, 0, (1.0/2.0)*pow(t, 2)/r, 0, 0, 1, 0, t, 0, -1.0/6.0*pow(t, 3)/r, 0, (1.0/2.0)*pow(t, 2)/r, 0, 0, 1, 0, -1.0/2.0*pow(t, 2)/r, 0, t/r, 0, 0, 0, 0, 1, 0, -1.0/2.0*pow(t, 2)/r, 0, t/r, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, -t, 0, 1, 0, 0, 0, 0, 0, 0, -t, 0, 1;
     return eAt;
   }
+  scalar r = Models::r;
 };
 //typedef StateSpace<Type,2*SYS_N,SYS_P,SYS_Q> Integrator2DSSComposite;
 typedef StateSpace<scalar,2*SYS_N,SYS_P,SYS_Q,Integrator2DCmpClosedExpm> Integrator2DSSComposite;
@@ -170,6 +175,16 @@ struct Integrator2D {
   Integrator2DFixTimeLQR ft_lqr = Integrator2DFixTimeLQR(state_space, state_space, gramian);
   Integrator2DOptTimeSolver opt_time_solver = Integrator2DOptTimeSolver(opt_time_diff);
   Integrator2DTrajectorySolver solver = Integrator2DTrajectorySolver(cost, opt_time_solver,ft_lqr,state_space,gramian,composite_ss);
+
+  void set_weight(scalar r) {
+    cost.r = r;
+    gramian.r = r;
+    opt_time_diff.r = r;
+    using RMat = decltype(ft_lqr.R);
+    ft_lqr.R = RMat::Identity()*r;
+    state_space.exp_fn.r = r;
+    composite_ss.exp_fn.r = r;
+  }
 };
 
 #ifdef GPU
