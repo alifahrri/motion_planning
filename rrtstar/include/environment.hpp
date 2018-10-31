@@ -304,8 +304,9 @@ struct DynamicRobosoccer
     }
   }
 
-  template<typename ArrayLike, size_t x_idx=0, size_t y_idx=1, size_t vx_idx=2, size_t vy_idx=3>
-  void setObstacles(const ArrayLike &obstacles) {
+private:
+  template<size_t x_idx=0, size_t y_idx=1, size_t vx_idx=2, size_t vy_idx=3>
+  auto setObstaclesImpl(int, const auto &obstacles) -> decltype(obstacles[0](x_idx), void()){
     for(size_t i=0; i<obstacles.size(); i++) {
       if(i == obs.size()) break;
       std::get<0>(obs.at(i)) = obstacles[i](x_idx);
@@ -313,6 +314,23 @@ struct DynamicRobosoccer
       std::get<2>(obs.at(i)) = obstacles[i](vx_idx);
       std::get<3>(obs.at(i)) = obstacles[i](vy_idx);
     }
+  }
+
+  template<size_t x_idx=0, size_t y_idx=1, size_t vx_idx=2, size_t vy_idx=3>
+  auto setObstaclesImpl(char, const auto &obstacles) -> decltype(obstacles[0][x_idx], void()){
+    for(size_t i=0; i<obstacles.size(); i++) {
+      if(i == obs.size()) break;
+      std::get<0>(obs.at(i)) = obstacles[i][x_idx];
+      std::get<1>(obs.at(i)) = obstacles[i][y_idx];
+      std::get<2>(obs.at(i)) = obstacles[i][vx_idx];
+      std::get<3>(obs.at(i)) = obstacles[i][vy_idx];
+    }
+  }
+
+public:
+  template<typename ArrayLike, size_t x_idx=0, size_t y_idx=1, size_t vx_idx=2, size_t vy_idx=3>
+  void setObstacles(const ArrayLike &obstacles) {
+    setObstaclesImpl<x_idx,y_idx,vx_idx,vy_idx>(0, obstacles);
   }
 
   template <int x_idx=0, int y_idx=1, typename point_t>
@@ -330,7 +348,7 @@ struct DynamicRobosoccer
   DynamicObstacles<scalar,n> obs;
   const scalar safety_radius = DEFAULT_SAFETY_RADIUS;
   const scalar single_robot_radius = DEFAULT_ROBOT_RADIUS;
-  const scalar collision_radius = (DEFAULT_ROBOT_RADIUS+DEFAULT_SAFETY_RADIUS)*2;
+  scalar collision_radius = (DEFAULT_ROBOT_RADIUS+DEFAULT_SAFETY_RADIUS)*2;
   RandomGen<4,scalar> *rg;
 };
 

@@ -4,6 +4,8 @@
 #include <vector>
 #include <tuple>
 #include <math.h>
+#include <utility>
+#include <type_traits>
 #include "rootfinder.hpp"
 
 #ifdef GPU
@@ -80,14 +82,17 @@ template
     // includes the system Matrix A and input Matrix B as member variables
     class System,
     // gramian classes should implements operator() with parameter (t) and invertible by calling G(t).inv()
-    class Gramian,
-    class State = typename System::StateType,
-    class Input = typename System::InputType,
-    class Weight = typename System::InputWeightType
+    class Gramian
+    // , class State = typename System::StateType
+    // , class Input = typename System::InputType
+    // , class Weight = typename System::InputWeightType
     >
 // compute optimal open loop control input given time
 class FixedTimeLQR
 {
+  using State = typename System::StateType;
+  using Input = typename System::InputType;
+  using Weight = typename System::InputWeightType;
 public:
   ATTRIBUTE
   FixedTimeLQR(const System &sys, const System &sys_t, const Gramian &gram, Weight R = Weight::Identity())
@@ -133,18 +138,28 @@ template
     // a composite system has 2(nxn) size of System,
     // to compute the trajectory given time, optimal time and xf
     // should have 'expm' method that gives exponential matrix
-    class CompositeSystem,
+    class CompositeSystem
     // State class should overloads operator << to fill its value
     // given states with another dimension
-    class CompositeState = typename CompositeSystem::StateType,
-    class State = typename System::StateType,
-    class Input = typename System::InputType,
-    class Scalar = double
+    // , class CompositeState = typename CompositeSystem::StateType
+    // , class State = typename System::StateType
+    // , class Input = typename System::InputType
+    , class Scalar = double
     >
 // compute optimal open loop trajectory given initial and final states
 class OptTrjSolver
 {
+  // we use this so that we do not pollute namspace
+  // or we could wrap this solver class inside some namespace
+  template <class Type>
+  using decay = std::decay_t<Type>;
 public:
+  using State = typename System::StateType;
+  using CompositeState = typename CompositeSystem::StateType;
+  // deduce the Input type while making sure the Control class has required function
+  using Input = decay<decltype(std::declval<Control>().solve(std::declval<Scalar>(), std::declval<Scalar>(), std::declval<State>(), std::declval<State>()))>;
+  //  using Input = System::Input;
+  //  using State = std::decay_t<decltype(std::declval<System>().expm(double(0.0)))>;
   typedef std::vector<std::tuple<Scalar,State,Input>> Trajectory;
 public:
   ATTRIBUTE
@@ -188,7 +203,41 @@ public:
     return ret;
   }
 
-  template<typename scalar=double>
+  Trajectory
+  solve(const State& xi, const State& xf, Scalar dt)
+  {
+    std::vector<std::tuple<Scalar,State,Input>> ret;
+    if(xi != xf)
+    {
+      auto opt_time = opt_time_solver.solve(xi,xf);
+      auto segment = int(opt_time/dt);
+      auto g_mat = G(opt_time);
+      auto g_inv = g_mat.inverse();
+      auto d_opt = g_inv*(xf-system.expm(opt_time)*xi);
+      CompositeState cmp_state;
+      cmp_state << xf, d_opt;
+      // ret.push_back(std::make_tuple(TimeIdx(0.0),xi,Input()));
+      for(int i=0; i<=segment; i++) {
+        auto t = opt_time*i/segment;
+        t = std::min(t,opt_time);
+        // auto ctrl = controller.solve(opt_time, t, xi, xf);
+        auto em = cmp_sys.expm(t-opt_time);
+        CompositeState s = em*cmp_state;
+        State state, yt;
+        for(int k=0; k<s.rows()/2; k++)
+          state(k) = s(k);
+        for(int k=s.rows()/2; k<s.rows(); k++)
+          yt(k-s.rows()/2) = s(k);
+        // State state(s.data());
+        // State yt(s.data()+s.rows());
+        auto ctrl = controller.R.inverse() * system.B.transpose() * yt;
+        ret.push_back(std::make_tuple(t,state,ctrl));
+      }
+    }
+    return ret;
+  }
+
+  template<typename scalar=Scalar>
 #ifdef GPU
   __host__
 #endif
