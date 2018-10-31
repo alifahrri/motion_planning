@@ -19,6 +19,9 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   visualization_msgs
+  rospy
+  std_msgs
+  message_generation
 )
 
 find_package(GTest REQUIRED)
@@ -66,6 +69,17 @@ PKG_CHECK_MODULES(nanoflann REQUIRED nanoflann)
 #endif()
 
 
+add_message_files(
+  FILES
+  State.msg
+  StampedState.msg
+  )
+
+add_service_files(
+  FILES
+  TrajectoryService.srv
+  )
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -75,10 +89,15 @@ PKG_CHECK_MODULES(nanoflann REQUIRED nanoflann)
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs  # and/or other packages containing depended messages
+)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES rrtstar_integrator2d
-  CATKIN_DEPENDS roscpp visualization_msgs
+  CATKIN_DEPENDS roscpp visualization_msgs message_runtime
   DEPENDS GTest
 )
 
@@ -109,8 +128,12 @@ add_executable(${PROJECT_NAME}_integrator2d_test src/integrator2d_test.cpp)
 add_executable(${PROJECT_NAME}_integrator2d_dataset src/integrator2d_dataset_node.cpp)
 add_executable(${PROJECT_NAME}_geometric3d src/geometric3d_demo.cpp)
 add_executable(${PROJECT_NAME}_geometric2d src/geometric2d_demo.cpp)
+add_executable(${PROJECT_NAME}_integrator2d_trajectory src/integrator2d_trajectory.cpp)
 #add_executable(${PROJECT_NAME}_unittest test/unittest.cpp)
 add_executable(${PROJECT_NAME}_benchmark test/benchmark.cpp)
+add_executable(${PROJECT_NAME}_custom_benchmark test/custom_benchmark.cpp)
+
+add_dependencies(${PROJECT_NAME}_integrator2d_trajectory ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
 
 if(CUDA_FOUND)
   cuda_add_library(integrator2d_cuda_model include/integrator2d.cuhpp include/fixedtimelqr.cuhpp include/util.cuh)
@@ -122,8 +145,10 @@ if(CUDA_FOUND)
 endif()
 
 target_link_libraries(${PROJECT_NAME}_benchmark ${BENCHMARK_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} benchmark pthread rrtstar_integrator2d integrator2d_model)
+target_link_libraries(${PROJECT_NAME}_custom_benchmark ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES} pthread rrtstar_integrator2d integrator2d_model)
 #target_link_libraries(${PROJECT_NAME}_unittest rrtstar_integrator2d integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_integrator2d_dynamic_test rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_integrator2d_trajectory integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_integrator2d_dataset rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_integrator2d_test rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_integrator2d_node rrtstar_integrator2d integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
