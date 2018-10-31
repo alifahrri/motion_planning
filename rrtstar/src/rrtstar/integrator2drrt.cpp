@@ -364,6 +364,11 @@ void Wrapper::initialize()
   rrtstar_int2d_timespace_obs = new RRTStarInt2DTimeSpaceObs(*tree_int2d, *cost_int2d, *sampler_dynamic_env, *checker_time_space, *radius, *goal_dynamic_env, *connector);
 }
 
+Models::Integrator2D &Wrapper::get_trajectory_solver()
+{
+  return integrator2d;
+}
+
 Models::Integrator2D Wrapper::integrator2d;
 TreeInt2D *Wrapper::tree_int2d;
 StaticEnvironment *Wrapper::robosoccer_env;
