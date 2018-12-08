@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
+  models
 )
 
 find_package(GTest REQUIRED)
@@ -113,9 +114,9 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_library(integrator2d_model include/integrator2d.hpp include/integrator.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/statespace.hpp include/statespacesolver.hpp)
-target_link_libraries(integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-set_target_properties(integrator2d_model PROPERTIES LINKER_LANGUAGE CXX)
+#add_library(integrator2d_model include/integrator2d.hpp include/integrator.hpp include/fixedtimelqr.hpp include/rootfinder.hpp include/statespace.hpp include/statespacesolver.hpp)
+#target_link_libraries(integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+#set_target_properties(integrator2d_model PROPERTIES LINKER_LANGUAGE CXX)
 
 #add_library(rrtstar include/integrator2drrt.hpp include/rrtstar.hpp include/pointcloud.hpp include/kdtree.hpp include/rrtvisual.hpp include/states.hpp include/environment.hpp include/collision.hpp include/random.hpp src/rrtstar/intergrator2drrt.cpp)
 add_library(rrtstar_integrator2d src/rrtstar/integrator2drrt.cpp)
