@@ -24,8 +24,11 @@ from matplotlib.figure import Figure
 
 class MyMplCanvas(FigureCanvas):
   """Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
-  def __init__(self, parent=None, width=5, height=4, dpi=100):
+  def __init__(self, parent=None, width=5, height=4, dpi=100, title='', xlabel='', ylabel=''):
     self.fig = Figure(figsize=(width, height), dpi=dpi)
+    self.title = title
+    self.xlabel = xlabel
+    self.ylabel = ylabel
     self.axes = self.fig.add_subplot(111)
     self.compute_initial_figure()
     FigureCanvas.__init__(self, self.fig)
@@ -40,6 +43,26 @@ class MyMplCanvas(FigureCanvas):
 class TrajectoryCanvas(MyMplCanvas) :
   def __init__(self, *args, **kwargs) :
     MyMplCanvas.__init__(self, *args, **kwargs)
+  
+  def update_compare_figure(self, states, labels=[]) :
+    if len(states) < 1 : return
+    self.axes.cla()
+    for i in range(len(states)) :
+      label = '' if i >= len(labels) else labels[i]
+      s = states[i]
+      if s.n == 1:
+        self.axes.plot(s.t, s.state, label=label, alpha=0.95)
+    if len(labels) :
+      self.axes.legend(loc='best', fancybox=True, framealpha=0.5, prop={'size': 6})
+    self.axes.set_title(self.title)
+    self.axes.set_xlabel(self.xlabel)
+    self.axes.set_ylabel(self.ylabel)
+    self.axes.grid()
+    y_lim = self.axes.get_ylim()
+    y_lim = [1.1 * (y_lim[0]-0.1), 1.1 * (y_lim[1]+0.1)]
+    self.axes.set_ylim(y_lim)
+    # x_lim = self.axes.get_xlim()
+    self.draw()
 
   def update_figure(self, states, input=[]) :
     if len(states) < 1 : return
@@ -91,12 +114,60 @@ class ApplicationWindow(QtWidgets.QMainWindow):
     self.menuBar().addMenu(self.help_menu)
     self.main_widget = QtWidgets.QWidget(self)
     self.main_widget.setFocus()
+    self.tab = QtWidgets.QTabWidget(self.main_widget)
+    ## prepare tab page
+    self.page = {
+      'demo' : QtWidgets.QWidget(self.tab),
+      'compare' : QtWidgets.QWidget(self.tab),
+    }
+    for k, v in self.page.iteritems() :
+      self.tab.addTab(v,k)
+
     # prepare layout
-    l = QtWidgets.QVBoxLayout(self.main_widget)
+    l = QtWidgets.QVBoxLayout(self.page['demo'])
     # add plotter
-    self.canvas = TrajectoryCanvas(self.main_widget, width=5, height=4, dpi=100)
+    self.canvas = TrajectoryCanvas(self.page['demo'], width=5, height=4, dpi=100)
     l.addWidget(self.canvas)
     # add widgets
+    self.create_demo_layout(l)
+    self.page['demo'].setLayout(l)
+
+    # create placeholder for compare parameter
+    self.compare_list = {
+      'param' : [],
+      'init' : [],
+      'final' : []
+    }
+
+    # prepare compare layout
+    self.compare_canvas = {
+      'position' : TrajectoryCanvas(self.page['compare'], width=5, height=4, dpi=100, ylabel='position', xlabel='time'),
+      'velocity' : TrajectoryCanvas(self.page['compare'], width=5, height=4, dpi=100, ylabel='velocity', xlabel='time'),
+      'acceleration' : TrajectoryCanvas(self.page['compare'], width=5, height=4, dpi=100, ylabel='acceleration', xlabel='time'),
+    }
+    g = QtWidgets.QGridLayout()
+    cl = QtWidgets.QVBoxLayout(self.page['compare'])
+    g.addWidget(self.compare_canvas['position'],0,0)
+    g.addWidget(self.compare_canvas['velocity'],0,1)
+    g.addWidget(self.compare_canvas['acceleration'],0,2)
+    cl.addLayout(g)
+    self.create_compare_layout(cl)
+    self.page['compare'].setLayout(cl)
+    
+    self.setCentralWidget(self.main_widget)
+    self.layout = QtWidgets.QVBoxLayout(self.main_widget)
+    self.layout.addWidget(self.tab)
+    self.centralWidget().setContentsMargins(0.,0.,0.,0.)
+    self.statusBar().showMessage("All hail matplotlib!", 2000)
+    # connect btn to apply method
+    self.btn['apply'].clicked.connect(self.apply)
+    self.btn['save'].clicked.connect(self.save)
+    self.compare_btn['apply'].clicked.connect(self.compare)
+    self.compare_btn['save'].clicked.connect(self.save_compare)
+    self.compare_btn['add'].clicked.connect(self.add_compare_param)
+    rospy.Timer(rospy.Duration(2), self.check)
+
+  def create_demo_layout(self, l) :
     sb = QtWidgets.QDoubleSpinBox
     self.sboxes = {
       'initial' : [sb(), sb(), sb(), sb()],
@@ -135,17 +206,128 @@ class ApplicationWindow(QtWidgets.QMainWindow):
       bhl.addWidget(v)
     # add hlayout to main layout
     l.addLayout(ihl), l.addLayout(fhl), l.addLayout(bhl)
-    self.setCentralWidget(self.main_widget)
-    self.centralWidget().setContentsMargins(0.,0.,0.,0.)
-    self.statusBar().showMessage("All hail matplotlib!", 2000)
-    # connect btn to apply method
-    self.btn['apply'].clicked.connect(self.apply)
-    self.btn['save'].clicked.connect(self.save)
-    rospy.Timer(rospy.Duration(2), self.check)
+  
+  def create_compare_layout(self, l) :
+    ## create table for params
+    self.compare_table = QtWidgets.QTableWidget()
+    self.compare_table.setColumnCount(3)
+    sb = QtWidgets.QDoubleSpinBox
+    self.compare_sboxes = {
+      'initial' : [sb(), sb(), sb(), sb()],
+      'final' : [sb(), sb(), sb(), sb()],
+      'param' : [sb()]
+      }
+    for k in self.compare_sboxes.keys() :
+      for s in self.compare_sboxes[k] :
+        s.setMaximumWidth(50)
+        s.setSingleStep(0.1)
+    ihl, fhl = QtWidgets.QHBoxLayout(), QtWidgets.QHBoxLayout()
+    ihl.addWidget(QtWidgets.QLabel('initial states :'))
+    fhl.addWidget(QtWidgets.QLabel('final states :'))
+    for s in self.compare_sboxes['initial'] : 
+      s.setMinimum(-s.maximum())
+      ihl.addWidget(s)
+    for s in self.compare_sboxes['final'] : 
+      s.setMinimum(-s.maximum())
+      fhl.addWidget(s)
+    # add btn to hlayout
+    self.compare_btn = {
+      'apply' : QtWidgets.QPushButton('apply'),
+      'save' : QtWidgets.QPushButton('save'),
+      'add' : QtWidgets.QPushButton('add'),
+    }
+    for k, v in self.compare_btn.iteritems() :
+      v.setMaximumWidth(50)
+    # hbox for params and btn
+    bhl = QtWidgets.QHBoxLayout()
+    label = QtWidgets.QLabel('r :')
+    label.setMaximumWidth(50)
+    bhl.addWidget(label)
+    bhl.addWidget(self.compare_sboxes['param'][0])
+    self.compare_sboxes['param'][0].setMinimum(0.1)
+    bhl.addWidget(QtWidgets.QWidget())
+    for k, v in self.compare_btn.iteritems() :
+      bhl.addWidget(v)
+    # add hlayout to main layout
+    l.addWidget(self.compare_table)
+    l.addLayout(ihl), l.addLayout(fhl), l.addLayout(bhl)
+
+  def draw_compare_table(self) :
+    n = len(self.compare_list['param'])
+    self.compare_table.clear()
+    self.compare_table.setColumnCount(5)
+    self.compare_table.setRowCount(n)
+    item = QtWidgets.QTableWidgetItem
+    cmp_list = self.compare_list
+    for i in range(n) :
+      param, init, final = cmp_list['param'][i], cmp_list['init'][i], cmp_list['final'][i]
+      self.compare_table.setItem(i, 0, item(str(param)))
+      self.compare_table.setItem(i, 1, item(str(init)))
+      self.compare_table.setItem(i, 2, item(str(final)))
+
+  def add_compare_param(self) :
+    param = [s.value() for s in self.compare_sboxes['param']]
+    initial = [s.value() for s in self.compare_sboxes['initial']]
+    final = [s.value() for s in self.compare_sboxes['final']]
+    self.compare_list['param'].append(param)
+    self.compare_list['init'].append(initial)
+    self.compare_list['final'].append(final)
+    self.draw_compare_table()
 
   def save(self) :
     filename = QtWidgets.QFileDialog.getSaveFileName()[0]
     self.canvas.fig.savefig(filename,bbox_inches="tight")
+
+  def save_compare(self) :
+    for k in ['position', 'velocity', 'acceleration'] :
+      filename = QtWidgets.QFileDialog.getSaveFileName()[0]
+      self.compare_canvas[k].fig.savefig(filename,bbox_inches="tight")
+
+  def compare(self) :
+    label = []
+    for i in range(self.compare_table.rowCount()) :
+      xitem = self.compare_table.item(i,3)
+      yitem = self.compare_table.item(i,4)
+      xtext = xitem.text() if not (xitem is None) else ''
+      ytext = yitem.text() if not (yitem is None) else ''
+      label.append(xtext)
+      label.append(ytext)
+    class compare_data() :
+      def __init__(self) :
+        self.n = 1
+        self.state = []
+        self.t = []
+    cmp_pos, cmp_vel, cmp_acc = [], [], []
+    rospy.wait_for_service('compute_trajectory')
+    trajectory = rospy.ServiceProxy('compute_trajectory', srv.TrajectoryService)
+    for i in range(len(self.compare_list['param'])) :
+      param = self.compare_list['param'][i]
+      final = self.compare_list['final'][i]
+      init = self.compare_list['init'][i]
+      try :
+        req = srv.TrajectoryServiceRequest()
+        req.model = 'integrator2d'
+        req.params = param
+        req.xi.state, req.xf.state  = init, final
+        req.xi.n, req.xf.n = len(init), len(final)
+        res = trajectory.call(req)
+        pos = [compare_data(), compare_data()] 
+        vel = [compare_data(), compare_data()]
+        acc = [compare_data(), compare_data()]
+        t = [t.t.data.to_sec() for t in res.trajectory]
+        for i in [0,1] :
+          pos[i].state = [x.state[i] for x in res.trajectory]
+          vel[i].state = [x.state[2+i] for x in res.trajectory]
+          acc[i].state = [x.state[i] for x in res.inputs]
+          pos[i].t, vel[i].t, acc[i].t = t, t, t
+          cmp_pos.append(pos[i])
+          cmp_vel.append(vel[i])
+          cmp_acc.append(acc[i])
+      except rospy.ServiceException as exc :
+        rospy.logwarn('service call failed : %s'%exc)
+      self.compare_canvas['position'].update_compare_figure(cmp_pos, labels=label)
+      self.compare_canvas['velocity'].update_compare_figure(cmp_vel, labels=label)
+      self.compare_canvas['acceleration'].update_compare_figure(cmp_acc, labels=label)
 
   def apply(self) :
     rospy.wait_for_service('compute_trajectory')
