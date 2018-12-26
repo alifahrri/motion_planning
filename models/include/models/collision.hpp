@@ -3,7 +3,10 @@
 
 #include <vector>
 #include <math.h>
+#include <functional>
 #include <type_traits>
+
+#include "elements.hpp"
 
 #ifdef GPU
 #include <cuda.h>
@@ -25,6 +28,7 @@
 #define TRACE_CUDA
 #endif
 #endif
+
 
 template <int x_idx, int y_idx, typename point_t, typename Iterable, typename scalar>
 ATTRIBUTE
@@ -56,19 +60,24 @@ bool line_circle_collision(const p1_t &pt0, const p2_t &pt1, const Iterable &obs
 #endif
   scalar x0, x1, y0, y1;
   bool collision = false;
-  x0 = pt0(x_idx); y0 = pt0(y_idx);
-  x1 = pt1(x_idx); y1 = pt1(y_idx);
+  // x0 = pt0(x_idx); y0 = pt0(y_idx);
+  // x1 = pt1(x_idx); y1 = pt1(y_idx);
+  x0 = elements::x<x_idx>(pt0); y0 = elements::y<y_idx>(pt0);
+  x1 = elements::x<x_idx>(pt1); y1 = elements::y<y_idx>(pt1);
   if(isnan(x0) || isnan(x1) || isnan(y0) || isnan(y1))
     return true;
   //  for(size_t i=0; i<obs.size(); i++)
   for(const auto &o : obs) {
     // auto cx = std::get<0>(o);
     // auto cy = std::get<1>(o);
-    auto cx = o(x_idx);
-    auto cy = o(y_idx);
-    // naive collision check
-    auto dxc0 = pt0(x_idx) - cx; auto dxc1 = pt1(x_idx) - cx;
-    auto dyc0 = pt0(y_idx) - cy; auto dyc1 = pt1(y_idx) - cy;
+    // auto cx = o(x_idx);
+    // auto cy = o(y_idx);
+    auto cx = elements::x<x_idx>(o);
+    auto cy = elements::x<y_idx>(o);
+    // auto dxc0 = pt0(x_idx) - cx; auto dxc1 = pt1(x_idx) - cx;
+    // auto dyc0 = pt0(y_idx) - cy; auto dyc1 = pt1(y_idx) - cy;
+    auto dxc0 = elements::x<x_idx>(pt0) - cx; auto dxc1 = elements::x<x_idx>(pt1) - cx;
+    auto dyc0 = elements::y<y_idx>(pt0) - cy; auto dyc1 = elements::y<y_idx>(pt1) - cy;
     auto r = sqrt(dxc0*dxc0+dyc0*dyc0);
     if(r <= collision_radius) {
       collision = true;
@@ -133,6 +142,147 @@ bool parametrized_line_circle_collision(const p1_t &p1, const p2_t &p2, const sc
   }
   return collision;
 }
+
+namespace collision {
+
+// using namespace std;
+// using namespace elements;
+
+// see https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+template <int x_idx=0, int y_idx=1>
+ATTRIBUTE
+inline
+auto line_line_collision(const auto &pt0, const auto &pt1, const auto &pt2, const auto &pt3) 
+  -> decltype(bool())
+  // -> decltype(x(pt0), y(pt0), x(pt1), y(pt1), x(pt2), y(pt2), x(pt3), y(pt3), true) 
+{
+  // auto collide = false;
+  using elements::x;
+  using elements::y;
+  // auto dx = [](const auto &p1, const auto &p2) {
+  //   return x<x_idx>(p1)-x<x_idx>(p2);
+  // };
+  // auto dy = [](const auto &p1, const auto &p2) {
+  //   return y<y_idx>(p1)-y<y_idx>(p2);
+  // };
+  auto on_segment = [](const auto &p, const auto &q, const auto &r) {
+    return ((x(q)<=std::max(x<x_idx>(p),x<x_idx>(r))) && (x<x_idx>(q)>=std::min(x<x_idx>(p),x<x_idx>(r))) &&
+      (y<y_idx>(q)<=std::max(y<y_idx>(p),y<y_idx>(r))) && (y<y_idx>(q)>=std::min(y<y_idx>(p),y<y_idx>(r))));
+  };
+  auto orientation = [](const auto &p, const auto &q, const auto &r) {
+    auto dy1 = y<y_idx>(q)-y<y_idx>(p);
+    auto dy2 = y<y_idx>(r)-y<y_idx>(q);
+    auto dx1 = x<x_idx>(r)-x<x_idx>(q);
+    auto dx2 = x<x_idx>(q)-x<x_idx>(p);
+    int val = dy1*dx1 - dx2*dy2;
+    // int val = dy(q,p) * dx(r,q) - dx(q,p) * dy(r,q);
+    return ((val == 0) ? 0 : (val > 0 ? 1 : 2));
+  };
+  auto o1 = orientation(pt0,pt1,pt2);
+  auto o2 = orientation(pt0,pt1,pt3);
+  auto o3 = orientation(pt2,pt3,pt0);
+  auto o4 = orientation(pt2,pt3,pt1);
+  if((o1!=o2) && (o3!=o4)) return true;
+  if(o1==0 && on_segment(pt0,pt2,pt1)) return true;
+  if(o2==0 && on_segment(pt0,pt3,pt1)) return true;
+  if(o3==0 && on_segment(pt2,pt0,pt3)) return true;
+  if(o4==0 && on_segment(pt2,pt1,pt3)) return true;
+  return false;
+  // // see http://www.jeffreythompson.org/collision-detection/line-line.php
+  // auto uA = (dx(pt3,pt2)*dy(pt0,pt2) - dy(pt3,pt2)*dx(pt0,pt2)) / (dy(pt3,pt2)*dx(pt1,pt0) - dx(pt3,pt2)*dy(pt1,pt0));
+  // auto uB = (dx(pt1,pt0)*dy(pt0,pt2) - dy(pt1,pt0)*dx(pt0,pt2)) / (dy(pt3,pt2)*dx(pt1,pt0) - dx(pt3,pt2)*dy(pt1,pt0));
+  // return (uA >= 0) && (uA <= 1) && (uB >= 0) && (uB <=1);
+}
+
+template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+ATTRIBUTE
+inline
+auto line_line_collision(const auto &line0, const auto &line1) 
+  -> decltype(bool())
+  // -> decltype(p0<p0_idx>(line0), p1<p1_idx>(line0), p0<p0_idx>(line1), p1<p1_idx>(line1), true)
+{
+  using elements::p0;
+  using elements::p1;
+  return line_line_collision<x_idx,y_idx>(p0<p0_idx>(line0),p1<p1_idx>(line0),p0<p0_idx>(line1),p1<p1_idx>(line1));
+}
+
+template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+ATTRIBUTE
+inline
+auto line_poly_collision(const auto &line, const auto &poly) 
+  -> decltype(bool())
+  // -> decltype(elements::line(poly, 0), true)
+{
+  bool collision = false;
+  auto check = [&](const auto &pline) {
+    collision = line_line_collision<x_idx,y_idx>(line, pline) ? true : collision;
+  };
+  elements::poly_iter(poly, check);
+  return collision;
+}
+
+template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+ATTRIBUTE
+inline
+auto poly_poly_collision(const auto &poly0, const auto &poly1) 
+  -> decltype(bool())
+  // -> decltype(elements::line(poly0), elements::line(poly1), true) 
+{
+  bool collision = false;
+  auto check = [&](const auto &line0) {
+    collision = (line_poly_collision<x_idx,y_idx,p0_idx,p1_idx>(line0, poly1) ? true : collision);
+    // auto line_check = [&](const auto &line1) {
+    //   collision = line_line_collision<x_idx,y_idx>(line0, line1) ? true : collision;
+    // };
+    // elements::poly_iter(poly1, line_check);
+  };
+  elements::poly_iter(poly0, check);
+  return collision;
+}
+
+template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+ATTRIBUTE
+inline
+auto point_inside_poly(const auto &pt, const auto &poly) 
+  -> decltype(bool())
+  // -> decltype(x<x_idx>(pt), y<y_idx>(pt), line(poly), true)
+{
+  using pt_t = std::remove_cv_t<std::remove_reference_t<decltype(pt)>>;
+  pt_t test_line[2];
+  elements::x<x_idx>(test_line[0]) = 1000000;
+  elements::y<y_idx>(test_line[0]) = elements::y<y_idx>(pt);
+  elements::x<x_idx>(test_line[1]) = elements::x<x_idx>(pt);
+  elements::y<y_idx>(test_line[1]) = elements::y<y_idx>(pt);
+  size_t count = 0;
+  auto check = [&](const auto &line) {
+    if(line_line_collision<x_idx, y_idx, p0_idx, p1_idx>(line, test_line))
+      count++;
+  };
+  elements::poly_iter(poly, check);
+  return bool(count&1);
+}
+
+template <int x_idx=0, int y_idx=1, int r_idx=2, int p0_idx=0, int p1_idx=1>
+ATTRIBUTE
+inline
+auto circle_poly_collision(const auto &circle, const auto &poly) 
+  -> decltype(bool())
+  // -> decltype(radius<r_idx>(circle), x<x_idx>(circle), y<y_idx>(circle), line(poly))
+{
+  bool collision = false;
+  using circle_t = std::remove_cv_t<std::remove_reference_t<decltype(circle)>>;
+  auto iterable_circle = std::vector<circle_t>();
+  iterable_circle.push_back(circle);
+  if(point_inside_poly(circle, poly))
+    return true;
+  auto check = [&](const auto &line) {
+    collision = line_circle_collision<x_idx, y_idx>(elements::p0<p0_idx>(line), elements::p1<p1_idx>(line), iterable_circle, elements::radius<r_idx>(circle)) ? true : collision;
+  };
+  elements::poly_iter(poly, check);
+  return collision;
+}
+
+} // namespace collision
 
 #endif // COLLISION_HPP
 

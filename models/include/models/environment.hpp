@@ -1,11 +1,14 @@
 #ifndef ENVIRONMENT_HPP
 #define ENVIRONMENT_HPP
 
+#include <type_traits>
 #include <random>
 #include <cmath>
 #include <array>
 #include <tuple>
+#include "elements.hpp"
 #include "collision.hpp"
+#include "obstacles.hpp"
 #include "random.hpp"
 
 #ifndef NDEBUG
@@ -38,163 +41,6 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 #define DEVICE
 #define HOST
 #endif
-
-#define DEFAULT_ROBOT_RADIUS (0.26)
-#define DEFAULT_SAFETY_RADIUS (0.15)
-#define SAMPLE_X0 (11.0)
-#define SAMPLE_X1 (7.0)
-#define SAMPLE_X2 (1.5)
-#define SAMPLE_X3 (1.5)
-
-#ifdef __NVCC__
-template <typename scalar> struct Obstacle
-{
-#else
-template <typename scalar>
-struct Obstacle : public std::tuple<scalar,scalar>
-{
-#endif
-
-  ATTRIBUTE
-  Obstacle() {}
-
-  HOST
-  Obstacle& operator = (const std::tuple<scalar,scalar> rv) {
-    (*this)[0] = std::get<0>(rv);
-    (*this)[1] = std::get<1>(rv);
-    return *this;
-  }
-
-  ATTRIBUTE
-  inline
-  const scalar& operator[](size_t i) const {
-#ifdef __NVCC__
-    return (i == 0 ? x : (i == 1 ? y : 0));
-#else
-    switch (i) {
-    case 0:
-      return std::get<0>(*this);
-    case 1:
-      return std::get<1>(*this);
-    }
-#endif
-  }
-
-  ATTRIBUTE
-  inline
-  scalar& operator[](size_t i) {
-#ifdef __NVCC__
-    return (i == 0 ? x : y);
-#else
-    switch (i) {
-    case 0:
-      return std::get<0>(*this);
-    case 1:
-      return std::get<1>(*this);
-    }
-#endif
-  }
-
-  ATTRIBUTE
-  inline
-  const scalar& operator ()(size_t i) const {
-    return (*this)[i];
-  }
-#ifdef __NVCC__
-  scalar x;
-  scalar y;
-#endif
-};
-
-template <typename scalar = double, int n = 9>
-struct Obstacles : public std::array<Obstacle<scalar>,n>
-{
-  Obstacles() {}
-
-  inline
-  std::array<std::tuple<scalar,scalar>,n> operator()
-  (std::array<std::tuple<scalar,scalar>,n> &lhs, Obstacles &rhs) {
-    for(size_t i=0; i<n; i++)
-      lhs[i] = std::tuple<scalar,scalar>(rhs[i]);
-    return lhs;
-  }
-};
-
-#ifdef __NVCC__
-template <typename scalar>
-struct DynamicObstacle
-{
-#else
-template <typename scalar>
-// struct DynamicObstacle : public std::tuple<scalar,scalar,scalar,scalar>
-struct DynamicObstacle : public std::array<scalar,4>
-{
-#endif
-  ATTRIBUTE
-  DynamicObstacle() {}
-
-  HOST
-  DynamicObstacle& operator = (const std::array<scalar,4> &rv) {
-    (*this)[0] = std::get<0>(rv);
-    (*this)[1] = std::get<1>(rv);
-    (*this)[2] = std::get<2>(rv);
-    (*this)[3] = std::get<3>(rv);
-    return *this;
-  }
-
-  template <typename time>
-  ATTRIBUTE
-  inline
-  DynamicObstacle<scalar>
-  operator ()(time t) const {
-    DynamicObstacle<scalar> ret;
-    ret[0] = (*this)[0] + (*this)[2] * t;
-    ret[1] = (*this)[1] + (*this)[3] * t;
-    return ret;
-  }
-
-  // template <>
-  // gcc doesn't allow inline explicit template specialization, btw
-  // but this does the trick
-  ATTRIBUTE
-  inline
-  scalar operator ()(size_t i) const {
-    return (*this)[i];
-  }
-  ATTRIBUTE
-  inline
-  scalar operator ()(int i) const {
-    return (*this)[i];
-  }
-
-#ifdef __NVCC__
-  __host__ __device__
-  inline
-  scalar& operator[](size_t i) {
-    return state[i];
-  }
-  __host__ __device__
-  inline
-  const scalar& operator[](size_t i) const {
-    return state[i];
-  }
-  scalar state[4];
-#endif
-};
-
-template <typename scalar = double, int n = 9>
-struct DynamicObstacles : public std::array<DynamicObstacle<scalar>,n>
-{
-  DynamicObstacles() {}
-
-  inline
-  std::array<std::tuple<scalar,scalar,scalar,scalar>,n> operator()
-  (std::array<std::tuple<scalar,scalar,scalar,scalar>,n> &lhs, DynamicObstacles &rhs) {
-    for(size_t i=0; i<n; i++)
-      lhs[i] = std::tuple<scalar,scalar,scalar,scalar>(rhs[i]);
-    return lhs;
-  }
-};
 
 template <typename scalar = double, int n = 9>
 struct Robosoccer
@@ -351,5 +197,138 @@ public:
   scalar collision_radius = (DEFAULT_ROBOT_RADIUS+DEFAULT_SAFETY_RADIUS)*2;
   RandomGen<4,scalar> *rg;
 };
+
+namespace environment {
+using namespace geometry;
+using namespace collision;
+using namespace elements;
+
+template <typename scalar = double>
+struct Environment {
+  std::vector<Polygon<scalar>> polygons;
+  std::vector<Circle<scalar>> circles;
+
+  template <size_t x_idx=0, size_t y_idx=1, size_t p0_idx=0, size_t p1_idx=1>
+  inline
+  auto add_polygons(choice<0>, const auto &polys) -> decltype(polys.size(), x(p0(elements::line(polys.at(0),0))), void()) {
+    using line_t = decltype(elements::line(polys.at(0),0));
+    for(size_t i=0; i<polys.size(); i++) {
+      Polygon<scalar> p;
+      auto fn = [&](const line_t &line) {
+        Line<scalar> l;
+        auto lp0 = p0<p0_idx>(line);
+        auto lp1 = p1<p1_idx>(line);
+        x(p0(l)) = x<x_idx>(lp0); x(p1(l)) = x<x_idx>(lp1);
+        y(p0(l)) = y<y_idx>(lp0); y(p1(l)) = y<y_idx>(lp1);
+        p.push_back(l);
+      };
+      poly_iter(polys.at(i), fn);
+      polygons.push_back(p);
+      // this->add_polygons<x_idx,y_idx,p0_idx,p1_idx>(choice<0>{},polys.at(i));
+    }
+  }
+
+  template <size_t x_idx=0, size_t y_idx=1, size_t p0_idx=0, size_t p1_idx=1>
+  inline
+  auto add_polygons(choice<1>, const auto &polys) -> decltype(x(p0(elements::line(polys,0))), void()) {
+    using line_t = decltype(elements::line(polys,0));
+    Polygon<scalar> p;
+    // auto fn = [&](const auto &line) {
+    auto fn = [&](const line_t &line) {
+      Line<scalar> l;
+      x(p0(l)) = x<x_idx>(p0<p0_idx>(line)); x(p1(l)) = x<x_idx>(p1<p0_idx>(line));
+      y(p0(l)) = y<y_idx>(p0<p0_idx>(line)); y(p1(l)) = y<y_idx>(p1<p1_idx>(line));
+      p.push_back(l);
+    };
+    poly_iter(polys, fn);
+    polygons.push_back(p);
+  }
+
+  template <size_t x_idx=0, size_t y_idx=1, size_t p0_idx=0, size_t p1_idx=1>
+  inline
+  auto add_polygons(const auto &polys) -> decltype(add_polygons(choice<1>{}, polys)) {
+    add_polygons<x_idx,y_idx,p0_idx,p1_idx>(choice<1>{}, polys);
+  }
+
+  template <size_t x_idx=0, size_t y_idx=1, size_t r_idx=2>
+  inline
+  auto add_circles(choice<1>, const auto &circles) -> decltype(circles.size(), x(circles.at(0)), y(circles.at(0)), radius(circles.at(0)), void()){
+    for(size_t i=0; i<circles.size(); i++) {
+      add_circles<x_idx,y_idx,r_idx>(choice<0>{}, circles.at(i));
+    }
+  }
+
+  template <size_t x_idx=0, size_t y_idx=1, size_t r_idx=2>
+  inline
+  auto add_circles(choice<0>, const auto &circles) -> decltype(x(circles), y(circles), radius(circles), void()) {
+    Circle<scalar> c;
+    x(c) = x<x_idx>(circles);
+    y(c) = y<y_idx>(circles);
+    radius(c) = radius<r_idx>(circles);
+    this->circles.push_back(c);
+  }
+  
+  template <size_t x_idx=0, size_t y_idx=1, size_t r_idx=3>
+  inline
+  auto add_circles(const auto &circles) -> decltype(add_circles(choice<1>{},circles)) {
+    add_circles<x_idx,y_idx,r_idx>(choice<1>{},circles);
+  }
+
+  // template <size_t x_idx=0, size_t y_idx=1, size_t p0_idx=0, size_t p1_idx=1>
+  template <size_t ...args>
+  inline
+  auto collide(choice<3>, const auto &polygon) const -> decltype(poly_poly_collision<args...>(polygon, polygons.at(0)), true) {
+    auto collide = false;
+    for(const auto &p : polygons) {
+      // collide = poly_poly_collision<x_idx,y_idx,p0_idx,p1_idx>(polygon, p) ? true : collide;
+      collide = poly_poly_collision<args...>(polygon, p) ? true : collide;
+    }
+    return collide;
+  }
+
+  // template <size_t x_idx=0, size_t y_idx=1, size_t r_idx=2, size_t p0_idx=0, size_t p1_idx=1>
+  template <size_t ...args>
+  inline
+  auto collide(choice<2>, const auto &circle) const -> decltype(circle_poly_collision<args...>(circle, polygons.at(0)), true) {
+    auto collide = false;
+    for(const auto &p : polygons) {
+      // collide = circle_poly_collision<x_idx,y_idx,r_idx,p0_idx,p1_idx>(circle, p) ? true : collide;
+      collide = circle_poly_collision<args...>(circle, p) ? true : collide;
+    }
+    return collide;
+  }
+
+  // template <size_t x_idx=0, size_t y_idx=1, size_t p0_idx=0, size_t p1_idx=1>
+  template <size_t ...args>
+  inline
+  auto collide(choice<1>, const auto &line) const -> decltype(line_poly_collision<args...>(line, polygons.at(0)), true) {
+    auto collide = false;
+    for(const auto &p : polygons) {
+      // collide = line_poly_collision<x_idx,y_idx>(line, p) ? true : collide;
+      collide = line_poly_collision<args...>(line, p) ? true : collide;
+    }
+    return collide;
+  }
+
+  // template <size_t x_idx=0, size_t y_idx=1>
+  template <size_t ...args>
+  inline
+  auto collide(choice<0>, const auto &point) const -> decltype(point_inside_poly<args...>(point, polygons.at(0)), true) {
+    auto collide = false;
+    for(const auto &p : polygons) {
+      // collide = point_inside_poly<x_idx,y_idx>(point, p) ? true : collide;
+      collide = point_inside_poly<args...>(point, p) ? true : collide;
+    }
+    return collide;
+  }
+
+  template <size_t ...args>
+  inline
+  auto collide(const auto &object) const -> decltype(collide<args...>(choice<3>{}, object), true) {
+    return collide<args...>(choice<3>{}, object);
+  }
+};
+
+}
 
 #endif // ENVIRONMENT_HPP

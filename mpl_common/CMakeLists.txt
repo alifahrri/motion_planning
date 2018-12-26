@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(models)
+project(mpl_common)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++17)
+add_compile_options(-std=c++14)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
   add_definitions(-DNDEBUG)
@@ -20,29 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   roscpp
   std_msgs
-  visualization_msgs
-  mpl_common
 )
-
-find_package(GTest REQUIRED)
-find_package(benchmark REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
-include_directories(${benchmark_INCLUDE_DIRS})
-
-find_package(Eigen3 REQUIRED NO_MODULE)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5PrintSupport REQUIRED)
-FIND_PACKAGE(PythonInterp REQUIRED)
-FIND_PACKAGE(PythonLibs REQUIRED)
-if(${PYTHON_VERSION_MAJOR} EQUAL 3)
-    FIND_PACKAGE(Boost COMPONENTS python3 system core)
-elseif()
-    FIND_PACKAGE(Boost COMPONENTS python system core)
-endif()
-
-find_package(PkgConfig)
-PKG_CHECK_MODULES(lapacke REQUIRED lapacke)
-PKG_CHECK_MODULES(nanoflann REQUIRED nanoflann)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -133,9 +111,9 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include include/models
-  LIBRARIES integrator2d_model
-  CATKIN_DEPENDS message_generation roscpp visualization_msgs message_runtime
+ INCLUDE_DIRS include include/mpl_common
+ LIBRARIES mpl_common
+ CATKIN_DEPENDS roscpp std_msgs message_generation message_runtime
 #  DEPENDS system_lib
 )
 
@@ -147,16 +125,16 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
-  include/models
   ${catkin_INCLUDE_DIRS}
+  include/mpl_common
 )
 
 ## Declare a C++ library
-add_library(integrator2d_model include/models/integrator2d.hpp include/models/integrator.hpp include/models/fixedtimelqr.hpp include/models/rootfinder.hpp include/models/statespace.hpp include/models/statespacesolver.hpp include/models/elements.hpp include/models/obstacles.hpp)
-target_link_libraries(integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-set_target_properties(integrator2d_model PROPERTIES LINKER_LANGUAGE CXX)
-
-#add_library(models integrator2d_model)
+add_library(${PROJECT_NAME}
+  include/mpl_common/choice.hpp include/mpl_common/elements.hpp include/mpl_common/random.hpp include/mpl_common/util.h
+)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -166,7 +144,7 @@ set_target_properties(integrator2d_model PROPERTIES LINKER_LANGUAGE CXX)
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_integrator2d_trajectory src/integrator2d_trajectory.cpp)
+# add_executable(${PROJECT_NAME}_node src/mpl_common_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -176,13 +154,12 @@ add_executable(${PROJECT_NAME}_integrator2d_trajectory src/integrator2d_trajecto
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_integrator2d_trajectory ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
+# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_integrator2d_trajectory
-  ${catkin_LIBRARIES}
-  integrator2d_model
-)
+# target_link_libraries(${PROJECT_NAME}_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -224,10 +201,10 @@ target_link_libraries(${PROJECT_NAME}_integrator2d_trajectory
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(${PROJECT_NAME}-test tests/unittest.cpp)
-if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-endif()
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_mpl_common.cpp)
+# if(TARGET ${PROJECT_NAME}-test)
+#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+# endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)

@@ -23,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   models
+  mpl_common
 )
 
 find_package(GTest REQUIRED)
