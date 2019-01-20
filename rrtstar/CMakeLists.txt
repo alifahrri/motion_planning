@@ -22,8 +22,9 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
-  models
   mpl_common
+	collision
+  models
 )
 
 find_package(GTest REQUIRED)

@@ -126,6 +126,30 @@ auto y(const auto &point) -> decltype(y<idx>(choice<2>{},point)) {
   return y<idx>(choice<2>{},point);
 }
 
+template<size_t>
+inline
+auto z(choice<2>, const auto &point) -> decltype(point.z()) {
+  return point.z();
+}
+
+template<size_t>
+inline
+auto z(choice<1>, const auto &point) -> decltype(point.z) {
+  return point.z;
+}
+
+template<size_t idx>
+inline
+auto z(choice<0>, const auto &point) -> decltype(element<idx>(choice<2>{},point)) {
+  return element<idx>(choice<2>{},point);
+}
+
+template<size_t idx=0>
+inline
+auto z(const auto &point) -> decltype(z<idx>(choice<2>{},point)) {
+  return z<idx>(choice<2>{},point);
+}
+
 /* get reference of the elements
  */
 template<size_t>
@@ -174,6 +198,30 @@ template<size_t idx=1>
 inline
 auto y(auto &point) -> decltype((y<idx>(choice<2>{},(point)))) {
   return y<idx>(choice<2>{},point);
+}
+
+template<size_t>
+inline
+auto z(choice<2>, auto &point) -> decltype((point.z())) {
+  return point.z();
+}
+
+template<size_t>
+inline
+auto z(choice<1>, auto &point) -> decltype((point.z)) {
+  return point.z;
+}
+
+template<size_t idx>
+inline
+auto z(choice<0>, auto &point) -> decltype((element<idx>(choice<2>{},(point)))) {
+  return element<idx>(choice<2>{},point);
+}
+
+template<size_t idx=1>
+inline
+auto z(auto &point) -> decltype((z<idx>(choice<2>{},(point)))) {
+  return z<idx>(choice<2>{},point);
 }
 
 /* generic getter function for circles

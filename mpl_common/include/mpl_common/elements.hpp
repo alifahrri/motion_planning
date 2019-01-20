@@ -7,265 +7,434 @@ namespace elements {
 
 template<size_t idx>
 inline
-const auto& element(choice<1>, const auto &p) {
-  return p(idx);
+auto element(choice<2>, const auto &e) -> decltype(e.at(idx)) {
+  return e.at(idx);
 }
 
 template<size_t idx>
 inline
-const auto& element(choice<0>, const auto &p) {
-  return p[idx];
-}
-
-inline
-const auto& element(choice<1>, const auto &p, size_t idx) {
-  return p(idx);
-}
-
-inline
-const auto& element(choice<0>, const auto &p, size_t idx) {
-  return p[idx];
+auto element(choice<1>, const auto &e) -> decltype(e(idx)) {
+  return e(idx);
 }
 
 template<size_t idx>
 inline
-auto& element(choice<1>, auto &p) {
-  return p(idx);
+auto element(choice<0>, const auto &e) -> decltype(e[idx]) {
+  return e[idx];
+}
+
+inline
+auto element(choice<2>, const auto &e, size_t idx) -> decltype(e.at(idx)) {
+  return e.at(idx);
+}
+
+inline
+auto element(choice<1>, const auto &e, size_t idx) -> decltype(e(idx)) {
+  return e(idx);
+}
+
+inline
+auto element(choice<0>, const auto &e, size_t idx) -> decltype(e[idx]) {
+  return e[idx];
+}
+
+/* get mutable
+ */
+
+template<size_t idx>
+inline
+auto element(choice<2>, auto &e) -> decltype((e.at(idx))) {
+  return e.at(idx);
 }
 
 template<size_t idx>
 inline
-auto& element(choice<0>, auto &p) {
-  return p[idx];
+auto element(choice<1>, auto &e) -> decltype((e(idx))) {
+  return e(idx);
+}
+
+template<size_t idx>
+inline
+auto element(choice<0>, auto &e) -> decltype((e[idx])) {
+  return e[idx];
 }
 
 inline
-auto& element(choice<1>, auto &p, size_t idx) {
-  return p(idx);
+auto element(choice<2>, auto &e, size_t idx) -> decltype((e.at(idx))) {
+  return e.at(idx);
 }
 
 inline
-auto& element(choice<0>, auto &p, size_t idx) {
-  return p[idx];
+auto element(choice<1>, auto &e, size_t idx) -> decltype((e(idx))) {
+  return e(idx);
+}
+
+inline
+auto element(choice<0>, auto &e, size_t idx) -> decltype((e[idx])) {
+  return e[idx];
 }
 
 /* generic getter functino for x and y elements
  *
  */
 
-template<size_t idx>
+template<size_t>
 inline
-auto x(choice<2>, const auto &p) -> decltype(p.x()) {
-  return p.x();
+auto x(choice<2>, const auto &point) -> decltype(point.x()) {
+  return point.x();
+}
+
+template<size_t>
+inline
+auto x(choice<1>, const auto &point) -> decltype(point.x) {
+  return point.x;
 }
 
 template<size_t idx>
 inline
-auto x(choice<1>, const auto &p) -> decltype(p.x) {
-  return p.x;
-}
-
-template<size_t idx>
-inline
-auto x(choice<0>, const auto &p) {
-  return element<idx>(choice<1>{},p);
+auto x(choice<0>, const auto &point) -> decltype(element<idx>(choice<2>{},point)) {
+  return element<idx>(choice<2>{},point);
 }
 
 template<size_t idx=0>
 inline
-auto x(const auto &p) {
-  return x<idx>(choice<2>{},p);
+auto x(const auto &point) -> decltype(x<idx>(choice<2>{},point)) {
+  return x<idx>(choice<2>{},point);
+}
+
+template<size_t>
+inline
+auto y(choice<2>, const auto &point) -> decltype(point.y()) {
+  return point.y();
+}
+
+template<size_t>
+inline
+auto y(choice<1>, const auto &point) -> decltype(point.y) {
+  return point.y;
 }
 
 template<size_t idx>
 inline
-auto y(choice<2>, const auto &p) -> decltype(p.y()) {
-  return p.y();
-}
-
-template<size_t idx>
-inline
-auto y(choice<1>, const auto &p) -> decltype(p.y) {
-  return p.y;
-}
-
-template<size_t idx>
-inline
-auto y(choice<0>, const auto &p) {
-  return element<idx>(choice<1>{},p);
+auto y(choice<0>, const auto &point) -> decltype(element<idx>(choice<2>{},point)) {
+  return element<idx>(choice<2>{},point);
 }
 
 template<size_t idx=1>
 inline
-auto y(const auto &p) {
-  return y<idx>(choice<2>{},p);
+auto y(const auto &point) -> decltype(y<idx>(choice<2>{},point)) {
+  return y<idx>(choice<2>{},point);
+}
+
+template<size_t>
+inline
+auto z(choice<2>, const auto &point) -> decltype(point.z()) {
+  return point.z();
+}
+
+template<size_t>
+inline
+auto z(choice<1>, const auto &point) -> decltype(point.z) {
+  return point.z;
+}
+
+template<size_t idx>
+inline
+auto z(choice<0>, const auto &point) -> decltype(element<idx>(choice<2>{},point)) {
+  return element<idx>(choice<2>{},point);
+}
+
+template<size_t idx=0>
+inline
+auto z(const auto &point) -> decltype(z<idx>(choice<2>{},point)) {
+  return z<idx>(choice<2>{},point);
 }
 
 /* get reference of the elements
  */
-template<size_t idx>
+template<size_t>
 inline
-auto x(choice<2>, auto &p) -> decltype((p.x())) {
-  return p.x();
+auto x(choice<2>, auto &point) -> decltype((point.x())) {
+  return point.x();
+}
+
+template<size_t>
+inline
+auto x(choice<1>, auto &point) -> decltype((point.x)) {
+  return point.x;
 }
 
 template<size_t idx>
 inline
-auto x(choice<1>, auto &p) -> decltype((p.x)) {
-  return p.x;
-}
-
-template<size_t idx>
-inline
-auto x(choice<0>, auto &p) {
-  return element<idx>(choice<1>{},p);
+auto x(choice<0>, auto &point) -> decltype((element<idx>(choice<2>{},(point)))) {
+  return element<idx>(choice<2>{},point);
 }
 
 template<size_t idx=0>
 inline
-auto x(auto &p) {
-  return x<idx>(choice<2>{},p);
+auto x(auto &point) -> decltype((x<idx>(choice<2>{},(point)))) {
+  return x<idx>(choice<2>{},point);
+}
+
+template<size_t>
+inline
+auto y(choice<2>, auto &point) -> decltype((point.y())) {
+  return point.y();
+}
+
+template<size_t>
+inline
+auto y(choice<1>, auto &point) -> decltype((point.y)) {
+  return point.y;
 }
 
 template<size_t idx>
 inline
-auto y(choice<2>, auto &p) -> decltype((p.y())) {
-  return p.y();
-}
-
-template<size_t idx>
-inline
-auto y(choice<1>, auto &p) -> decltype((p.y)) {
-  return p.y;
-}
-
-template<size_t idx>
-inline
-auto y(choice<0>, auto &p) {
-  return element<idx>(choice<1>{},p);
+auto y(choice<0>, auto &point) -> decltype((element<idx>(choice<2>{},(point)))) {
+  return element<idx>(choice<2>{},point);
 }
 
 template<size_t idx=1>
 inline
-auto y(auto &p) {
-  return y<idx>(choice<2>{},p);
+auto y(auto &point) -> decltype((y<idx>(choice<2>{},(point)))) {
+  return y<idx>(choice<2>{},point);
+}
+
+template<size_t>
+inline
+auto z(choice<2>, auto &point) -> decltype((point.z())) {
+  return point.z();
+}
+
+template<size_t>
+inline
+auto z(choice<1>, auto &point) -> decltype((point.z)) {
+  return point.z;
+}
+
+template<size_t idx>
+inline
+auto z(choice<0>, auto &point) -> decltype((element<idx>(choice<2>{},(point)))) {
+  return element<idx>(choice<2>{},point);
+}
+
+template<size_t idx=1>
+inline
+auto z(auto &point) -> decltype((z<idx>(choice<2>{},(point)))) {
+  return z<idx>(choice<2>{},point);
 }
 
 /* generic getter function for circles
  */
-template <size_t r_idx=2>
+template <size_t>
 inline
 auto radius(choice<5>, const auto &circle) -> decltype(circle.r()) {
   return circle.r();
 }
 
-template <size_t r_idx=2>
+template <size_t>
 inline
 auto radius(choice<4>, const auto &circle) -> decltype(circle.r) {
   return circle.r;
 }
 
-template <size_t r_idx=2>
+template <size_t>
 inline
 auto radius(choice<3>, const auto &circle) -> decltype(circle.radius()) {
   return circle.radius();
 }
 
-template <size_t r_idx=2>
+template <size_t>
 inline
 auto radius(choice<2>, const auto &circle) -> decltype(circle.radius) {
   return circle.radius;
 }
 
-template <size_t r_idx=2>
+template <size_t>
 inline
 auto radius(choice<1>, const auto &circle) -> decltype(circle.radius()) {
   return circle.radius();
 }
 
-template <size_t r_idx=2>
+template <size_t r_idx>
 inline
-auto radius(choice<0>, const auto &circle) {
-  return element<r_idx>(choice<1>{}, circle);
+auto radius(choice<0>, const auto &circle) -> decltype(element<r_idx>(choice<2>{},(circle))) {
+  return element<r_idx>(choice<2>{}, circle);
 }
 
 template <size_t r_idx=2>
 inline
-auto radius(const auto &circle) {
+auto radius(const auto &circle) -> decltype(radius<r_idx>(choice<5>{},circle)) {
+  return radius<r_idx>(choice<5>{}, circle);
+}
+
+/* generic getter function for mutable circles
+ */
+
+template <size_t>
+inline
+auto radius(choice<5>, auto &circle) -> decltype((circle.r())) {
+  return circle.r();
+}
+
+template <size_t>
+inline
+auto radius(choice<4>, auto &circle) -> decltype((circle.r)) {
+  return circle.r;
+}
+
+template <size_t>
+inline
+auto radius(choice<3>, auto &circle) -> decltype((circle.radius())) {
+  return circle.radius();
+}
+
+template <size_t>
+inline
+auto radius(choice<2>, auto &circle) -> decltype((circle.radius)) {
+  return circle.radius;
+}
+
+template <size_t>
+inline
+auto radius(choice<1>, auto &circle) -> decltype((circle.radius())) {
+  return circle.radius();
+}
+
+template <size_t r_idx>
+inline
+auto radius(choice<0>, auto &circle) -> decltype((element<r_idx>(choice<2>{},(circle)))) {
+  return element<r_idx>(choice<2>{}, circle);
+}
+
+template <size_t r_idx=2>
+inline
+auto radius(auto &circle) -> decltype((radius<r_idx>(choice<5>{},circle))) {
   return radius<r_idx>(choice<5>{}, circle);
 }
 
 /* generic getter functino for points of line
  *
  */
-template<size_t idx>
+template<size_t>
 inline
-auto p0(choice<2>, const auto &l) -> decltype(l.p0()) {
-  return l.p0();
+auto p0(choice<2>, const auto &line) -> decltype(line.p0()) {
+  return line.p0();
+}
+
+template<size_t>
+inline
+auto p0(choice<1>, const auto &line) -> decltype(line.p0) {
+  return line.p0;
 }
 
 template<size_t idx>
 inline
-auto p0(choice<1>, const auto &l) -> decltype(l.p0) {
-  return l.p0;
-}
-
-template<size_t idx>
-inline
-auto p0(choice<0>, const auto &l) {
-  return element<idx>(choice<1>{}, l);
+auto p0(choice<0>, const auto &line) -> decltype(element<idx>(choice<2>{},line)) {
+  return element<idx>(choice<2>{}, line);
 }
 
 template<size_t idx=0>
 inline
-auto p0(const auto &l) {
-  return p0<idx>(choice<2>{},l);
+auto p0(const auto &line) -> decltype(p0<idx>(choice<2>{}, line)) {
+  return p0<idx>(choice<2>{},line);
+}
+
+template<size_t>
+inline
+auto p1(choice<2>, const auto &line) -> decltype(line.p1()) {
+  return line.p1();
+}
+
+template<size_t>
+inline
+auto p1(choice<1>, const auto &line) -> decltype(line.p1) {
+  return line.p1;
 }
 
 template<size_t idx>
 inline
-auto p1(choice<2>, const auto l) -> decltype(l.p1()) {
-  return l.p1();
+auto p1(choice<0>, const auto &line) -> decltype(element<idx>(choice<2>{}, line)) {
+  return element<idx>(choice<2>{}, line);
+}
+
+template<size_t idx=1>
+inline
+auto p1(const auto &line) -> decltype(p1<idx>(choice<2>{}, line)) {
+  return p1<idx>(choice<2>{},line);
+}
+
+/* generic getter functino for mutable points of line
+ *
+ */
+template<size_t>
+inline
+auto p0(choice<2>, auto &line) -> decltype((line.p0())) {
+  return line.p0();
+}
+
+template<size_t>
+inline
+auto p0(choice<1>, auto &line) -> decltype((line.p0)) {
+  return line.p0;
 }
 
 template<size_t idx>
 inline
-auto p1(choice<1>, const auto &l) -> decltype(l.p1) {
-  return l.p1;
-}
-
-template<size_t idx>
-inline
-auto p1(choice<0>, const auto &l) {
-  return element<idx>(choice<1>{}, l);
+auto p0(choice<0>, auto &line) -> decltype((element<idx>(choice<2>{}, line))){
+  return element<idx>(choice<2>{}, line);
 }
 
 template<size_t idx=0>
 inline
-auto p1(const auto &l) {
-  return p1<idx>(choice<2>{},l);
+auto p0(auto &line) -> decltype((p0<idx>(choice<2>{},line))) {
+  return p0<idx>(choice<2>{},line);
+}
+
+template<size_t>
+inline
+auto p1(choice<2>, auto &line) -> decltype((line.p1())) {
+  return line.p1();
+}
+
+template<size_t>
+inline
+auto p1(choice<1>, auto &line) -> decltype((line.p1)) {
+  return line.p1;
+}
+
+template<size_t idx>
+inline
+auto p1(choice<0>, auto &line) -> decltype((element<idx>(choice<2>{}, line))){
+  return element<idx>(choice<2>{}, line);
+}
+
+template<size_t idx=1>
+inline
+auto p1(auto &line) -> decltype((p1<idx>(choice<2>{},line))) {
+  return p1<idx>(choice<2>{},line);
 }
 
 /* Generic getter function for line from polygon
  */
 
 inline
-auto line(choice<2>, const auto &poly, size_t i) -> decltype(element(poly.lines, i)) {
-  return element(choice<1>{}, poly.lines, i);
+auto line(choice<2>, const auto &poly, size_t i) -> decltype(element(choice<2>{}, poly.lines, i)) {
+  return element(choice<2>{}, poly.lines, i);
 }
 
 inline
-auto line(choice<1>, const auto &poly, size_t i) -> decltype(element(poly.lines(), i)) {
-  return element(choice<1>{}, poly.lines(), i);
+auto line(choice<1>, const auto &poly, size_t i) -> decltype(element(choice<2>{}, poly.lines(), i)) {
+  return element(choice<2>{}, poly.lines(), i);
 }
 
 inline
-auto line(choice<0>, const auto &poly, size_t i) {
-  return element(choice<1>{}, poly, i);
+auto line(choice<0>, const auto &poly, size_t i) -> decltype(element(choice<2>{}, poly, i)) {
+  return element(choice<2>{}, poly, i);
 }
 
 inline
-auto line(const auto &poly, size_t i) {
+auto line(const auto &poly, size_t i) -> decltype(line(choice<2>{}, poly, i)) {
   return line(choice<2>{}, poly, i);
 }
 
@@ -301,7 +470,7 @@ auto poly_iter(choice<0>, const auto &poly, auto &fn) -> decltype(poly.lines(), 
 }
 
 inline
-auto poly_iter(const auto &poly, auto &fn) {
+auto poly_iter(const auto &poly, auto &fn) -> decltype(poly_iter(choice<3>{}, poly, fn), void()) {
   poly_iter(choice<3>{}, poly, fn);
 }
 

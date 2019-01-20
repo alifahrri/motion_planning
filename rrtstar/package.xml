@@ -50,11 +50,13 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
+	<build_depend>collision</build_depend>
   <build_depend>models</build_depend>
   <build_depend>visualization_msgs</build_depend>
   <build_depend>message_generation</build_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>models</build_export_depend>
+	<build_export_depend>collision</build_export_depend>
   <build_export_depend>visualization_msgs</build_export_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>models</exec_depend>

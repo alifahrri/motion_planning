@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-// this object was used for resolving ambiguous call
+// this object could be used for resolving ambiguous call
 
 template <std::size_t n>
 struct choice : choice<n-1>

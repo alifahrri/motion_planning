@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(models)
+project(collision)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++17)
@@ -17,38 +17,20 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  message_generation
-  roscpp
-  std_msgs
-  visualization_msgs
   mpl_common
-	collision
+  roscpp
+	octomap_msgs
+  octomap_ros
+  std_msgs
 )
-
-find_package(GTest REQUIRED)
-find_package(benchmark REQUIRED)
-find_package(octomap REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
-include_directories(${benchmark_INCLUDE_DIRS})
-
-find_package(Eigen3 REQUIRED NO_MODULE)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5PrintSupport REQUIRED)
-FIND_PACKAGE(PythonInterp REQUIRED)
-FIND_PACKAGE(PythonLibs REQUIRED)
-if(${PYTHON_VERSION_MAJOR} EQUAL 3)
-    FIND_PACKAGE(Boost COMPONENTS python3 system core)
-elseif()
-    FIND_PACKAGE(Boost COMPONENTS python system core)
-endif()
-
-find_package(PkgConfig)
-PKG_CHECK_MODULES(lapacke REQUIRED lapacke)
-PKG_CHECK_MODULES(nanoflann REQUIRED nanoflann)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(GTest REQUIRED)
+find_package(benchmark REQUIRED)
+find_package(Eigen3 REQUIRED NO_MODULE)
+include_directories(${GTEST_INCLUDE_DIRS})
+include_directories(${benchmark_INCLUDE_DIRS})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -80,17 +62,18 @@ PKG_CHECK_MODULES(nanoflann REQUIRED nanoflann)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  State.msg
-  StampedState.msg
-)
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  TrajectoryService.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -100,10 +83,10 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -135,9 +118,9 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include include/models include/models/dynamics
-  LIBRARIES integrator2d_model
-  CATKIN_DEPENDS message_generation roscpp visualization_msgs message_runtime
+ INCLUDE_DIRS include include/collision
+ LIBRARIES collision
+ CATKIN_DEPENDS mpl_common roscpp std_msgs octomap
 #  DEPENDS system_lib
 )
 
@@ -148,25 +131,20 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
-  include/models
-	include/models/dynamics
-  ${catkin_INCLUDE_DIRS}
+ include include/collision
+ ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-add_library(integrator2d_model 
-	include/models/dynamics/integrator2d.hpp 
-	include/models/integrator.hpp 
-	include/models/fixedtimelqr.hpp 
-	include/models/rootfinder.hpp 
-	include/models/statespace.hpp 
-	include/models/statespacesolver.hpp 
-	)
-target_link_libraries(integrator2d_model ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-set_target_properties(integrator2d_model PROPERTIES LINKER_LANGUAGE CXX)
-
-#add_library(models integrator2d_model)
+add_library(${PROJECT_NAME}
+  include/${PROJECT_NAME}/collision.hpp
+	include/${PROJECT_NAME}/environment.hpp
+	include/${PROJECT_NAME}/gridmap.hpp
+	include/${PROJECT_NAME}/obstacles.hpp
+)
+# target_link_libraries(${PROJECT_NAME} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -176,7 +154,7 @@ set_target_properties(integrator2d_model PROPERTIES LINKER_LANGUAGE CXX)
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_integrator2d_trajectory src/integrator2d_trajectory.cpp)
+# add_executable(${PROJECT_NAME}_node src/collision_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -186,13 +164,12 @@ add_executable(${PROJECT_NAME}_integrator2d_trajectory src/integrator2d_trajecto
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_integrator2d_trajectory ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
+# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_integrator2d_trajectory
-  ${catkin_LIBRARIES}
-  integrator2d_model
-)
+# target_link_libraries(${PROJECT_NAME}_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -234,9 +211,13 @@ target_link_libraries(${PROJECT_NAME}_integrator2d_trajectory
 #############
 
 ## Add gtest based cpp test target and link libraries
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_collision.cpp)
+# if(TARGET ${PROJECT_NAME}-test)
+#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+# endif()
 catkin_add_gtest(${PROJECT_NAME}-test tests/unittest.cpp)
 if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+  target_link_libraries(${PROJECT_NAME}-test collision ${GTEST_LIBRARIES} ${catkin_LIBRARIES})
 endif()
 
 ## Add folders to be run by python nosetests
