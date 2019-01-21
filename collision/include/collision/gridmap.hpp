@@ -101,11 +101,15 @@ public:
 		auto los = true;
 		for(const auto &r : ray) {
 			if constexpr(std::is_pointer_v<tree_t>) {
-				if(tree->search(r)->getOccupancy() > min_occupancy)
-					los = false;
+				if(tree->search(r)) {
+					if(tree->search(r)->getOccupancy() > min_occupancy)
+						los = false;
+				}
 			} else {
-				if(tree.search(r)->getOccupancy() > min_occupancy)
-					los = false;
+				if(tree.search(r)) {
+					if(tree.search(r)->getOccupancy() > min_occupancy)
+						los = false;
+				}
 			}
 		}
 		return los;
@@ -182,12 +186,12 @@ public:
 	{
 		pub = node.advertise<grid_msgs_t>(topic, queue);
 	}
-	
-	auto setFrameID(auto frame_id) 
+
+	auto setFrameID(auto frame_id)
 	{
 		this->frame_id = frame_id;
 	}
-	
+
 	auto getFrameID() const
 	{
 		return this->frame_id;
@@ -196,7 +200,7 @@ public:
 	inline
 	auto publish()
 	{
-		prepare_message(choice<1>{}, this->grid);
+		prepare_message(choice<1> {}, this->grid);
 		msg.header.frame_id = frame_id;
 		msg.header.stamp = ros::Time::now();
 		msg.header.seq = seq;

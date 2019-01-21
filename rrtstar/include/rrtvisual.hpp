@@ -153,9 +153,9 @@ public:
     marker_array.markers.push_back(pts);
   }
 
-  template <typename NodePosContainer, typename ParentIdxContainer>
+  template <size_t dim, typename NodePosContainer, typename ParentIdxContainer>
   inline // NodePosType & ParentIndex should be container
-  void set_nodes(const NodePosContainer &nodes_pos, const ParentIdxContainer &parent_map, int dim, size_t size)
+  void set_nodes(const NodePosContainer &nodes_pos, const ParentIdxContainer &parent_map, size_t size)
   {
     // visualization_msgs::Marker point;
     // visualization_msgs::Marker lines;
@@ -204,6 +204,7 @@ public:
     lines.id = marker_array.markers.size();
     marker_array.markers.push_back(lines);
   }
+	
   template <typename Trajectory>
   inline
   void set_trajectory(const Trajectory &trajectory, int pos_dim)

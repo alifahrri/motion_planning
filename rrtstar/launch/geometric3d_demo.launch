@@ -1,4 +1,10 @@
 <launch>
-  <node name="rrtstar_geometric3d" pkg="rrtstar" type="rrtstar_geometric3d"/>
+	<arg name="debug" default="false"/>
+	<arg name="launch_prefix" default="gdb -ex run --args"/>
+	<param name="rate" value="30.0"/>
+	<param name="x" value="-3.0"/>
+	<param name="y" value="1.0"/>
+	<param name="z" value="1.0"/>
+  <node name="rrtstar_geometric3d" pkg="rrtstar" type="rrtstar_geometric3d" output="screen" required="true" launch-prefix="$(arg launch_prefix)"/>
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rrtstar)/rviz/geom3d_config.rviz"/>
 </launch>

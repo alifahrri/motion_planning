@@ -144,7 +144,7 @@ auto z(choice<0>, const auto &point) -> decltype(element<idx>(choice<2>{},point)
   return element<idx>(choice<2>{},point);
 }
 
-template<size_t idx=0>
+template<size_t idx=2>
 inline
 auto z(const auto &point) -> decltype(z<idx>(choice<2>{},point)) {
   return z<idx>(choice<2>{},point);
@@ -218,7 +218,7 @@ auto z(choice<0>, auto &point) -> decltype((element<idx>(choice<2>{},(point)))) 
   return element<idx>(choice<2>{},point);
 }
 
-template<size_t idx=1>
+template<size_t idx=2>
 inline
 auto z(auto &point) -> decltype((z<idx>(choice<2>{},(point)))) {
   return z<idx>(choice<2>{},point);
