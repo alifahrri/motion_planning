@@ -23,6 +23,12 @@ auto element(choice<0>, const auto &e) -> decltype(e[idx]) {
   return e[idx];
 }
 
+template<size_t idx>
+inline
+auto element(const auto &e) -> decltype(element<idx>(choice<2>{}, e)) {
+	return element<idx>(choice<2>{},e);
+}
+
 inline
 auto element(choice<2>, const auto &e, size_t idx) -> decltype(e.at(idx)) {
   return e.at(idx);
@@ -36,6 +42,11 @@ auto element(choice<1>, const auto &e, size_t idx) -> decltype(e(idx)) {
 inline
 auto element(choice<0>, const auto &e, size_t idx) -> decltype(e[idx]) {
   return e[idx];
+}
+
+inline 
+auto element(const auto &e, size_t idx) -> decltype(element(choice<2>{}, e, idx)) {
+	return element(choice<2>{}, e, idx);
 }
 
 /* get mutable
@@ -59,6 +70,12 @@ auto element(choice<0>, auto &e) -> decltype((e[idx])) {
   return e[idx];
 }
 
+template<size_t idx>
+inline 
+auto element(auto &e) -> decltype((element<idx>(choice<2>{}, e))) {
+	return (element<idx>(choice<2>{}, e));
+}
+
 inline
 auto element(choice<2>, auto &e, size_t idx) -> decltype((e.at(idx))) {
   return e.at(idx);
@@ -72,6 +89,11 @@ auto element(choice<1>, auto &e, size_t idx) -> decltype((e(idx))) {
 inline
 auto element(choice<0>, auto &e, size_t idx) -> decltype((e[idx])) {
   return e[idx];
+}
+
+inline
+auto element(auto &e, size_t idx) -> decltype((element(choice<2>{}, e, idx))) {
+	return (element(choice<2>{}, e, idx));
 }
 
 /* generic getter functino for x and y elements
