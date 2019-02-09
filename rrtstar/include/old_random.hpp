@@ -17,7 +17,20 @@ struct RandomGen
     return *this;
   }
 
-  RandomGen(std::initializer_list<scalar> min, std::initializer_list<scalar> max) {
+  RandomGen(std::initializer_list<scalar> min, std::initializer_list<scalar> max) 
+	{
+   _initialize(min, max);
+  }
+	
+	RandomGen() 
+	{
+		std::vector<scalar> min(dim, scalar(0.0));
+		std::vector<scalar> max(dim, scalar(1.0));
+		_initialize(min, max);
+	}
+	
+	template <typename array_like_t>
+	void _initialize(const array_like_t &min, const array_like_t &max) {
     std::random_device rd;
 
     auto min_it = min.begin();
