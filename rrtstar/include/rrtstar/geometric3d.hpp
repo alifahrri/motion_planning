@@ -5,6 +5,7 @@
 #include <memory>
 #include <type_traits>
 
+#include "sampler.hpp"
 #include "kdtree.hpp"
 #include "rrtstar.hpp"
 #include "rrtvisual.hpp"
@@ -182,24 +183,24 @@ struct CollisionChecker {
 
 CollisionChecker checker;
 
-struct Sampler {
+struct Sampler : mpl::Sampler<3,double> {
 	Sampler()
+		: mpl::Sampler<3,double>()
 	{
-		twister_engine = std::mt19937_64(rd());
+		using std::vector;
+		this->set_bound(
+			vector{-SAMPLE_SCALE/2,-SAMPLE_SCALE/2,0.0},
+			vector{SAMPLE_SCALE/2,SAMPLE_SCALE/2,SAMPLE_SCALE}
+		);
 	}
 	State3D operator()()
 	{
-		ROS_INFO("sample sates");
+		ROS_INFO("sample states");
 		std::shared_ptr<Point3D> pt(new Point3D());
 		std::shared_ptr<CostType> c(new CostType(0.0));
-		pt->p[0] = (dist[0](twister_engine)-0.5) * SAMPLE_SCALE;
-		pt->p[1] = (dist[1](twister_engine)-0.5) * SAMPLE_SCALE;
-		pt->p[2] = dist[2](twister_engine) * SAMPLE_SCALE;
+		mpl::Sampler<3,double>::operator()(pt->p);
 		return State3D(pt,c);
 	}
-	std::random_device rd;
-	std::mt19937_64 twister_engine;
-	std::uniform_real_distribution<> dist[3];
 };
 
 Sampler sampler;
