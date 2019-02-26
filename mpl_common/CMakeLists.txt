@@ -135,6 +135,7 @@ add_library(${PROJECT_NAME}
 	include/mpl_common/elements.hpp 
 	include/mpl_common/random.hpp 
 	include/mpl_common/util.h
+	include/mpl_common/utility.hpp
 	include/mpl_common/states.hpp
 	include/mpl_common/sampler.hpp
 )
