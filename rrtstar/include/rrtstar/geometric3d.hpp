@@ -238,7 +238,9 @@ RRTStar3D rrtstar_3d(tree3d, cost3d, sampler, checker, radius, goal, connector);
 
 class GeomRRTStar3D
 {
-	typedef CollisionChecker<gridmap::OctomapWrapper<octomap::OcTree>> collision_t;
+	typedef gridmap::Publisher<octomap::OcTree> publisher_t;
+	typedef gridmap::OctomapWrapper<octomap::OcTree,gridmap::los_method::avg_occupancy> gridmap_t;
+	typedef CollisionChecker<gridmap_t> collision_t;
 	typedef RRTStar<Tree3D,Cost3D,Sampler,NeighborRadius,collision_t,GoalChecker,Connector3D> rrtstar_t;
 public:
 	Tree3D *tree3d;
@@ -249,8 +251,8 @@ public:
 	GoalChecker *goal;
 	Connector3D *connector;
 	rrtstar_t *rrtstar_3d;
-	gridmap::OctomapWrapper<octomap::OcTree> octowrapper;
-	gridmap::Publisher<octomap::OcTree> pub;
+	gridmap_t octowrapper;
+	publisher_t pub;
 private :
 	void init()
 	{
@@ -265,8 +267,8 @@ private :
 	}
 public :
 	GeomRRTStar3D(ros::NodeHandle &node, octomap::OcTree &octree)
-		: octowrapper(gridmap::OctomapWrapper(octree))
-		, pub(gridmap::Publisher(node, octree, "/octomap_fullmap"))
+		: octowrapper(gridmap_t(octree))
+		, pub(publisher_t(node, octree, "/octomap_fullmap"))
 	{
 		this->init();
 	}

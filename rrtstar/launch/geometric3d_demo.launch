@@ -5,6 +5,7 @@
 	<param name="x" value="-3.0"/>
 	<param name="y" value="1.0"/>
 	<param name="z" value="1.0"/>
+	<rosparam command="load" file="$(find rrtstar)/config/geom3d_config.yaml" />
   <node name="rrtstar_geometric3d" pkg="rrtstar" type="rrtstar_geometric3d" output="screen" required="true" launch-prefix="$(arg launch_prefix)"/>
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rrtstar)/rviz/geom3d_config.rviz"/>
 </launch>
