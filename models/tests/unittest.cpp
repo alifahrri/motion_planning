@@ -345,23 +345,23 @@ TEST(environment, add_circles) {
   EXPECT_TRUE(ok);
 }
 
-TEST(environment, polygon_env_collide) {
-  auto env = environment::Environment<double>();
-  {
-    env.add_polygons(poly0);
-    env.add_polygons(poly1);
-  }
-  EXPECT_TRUE(env.collide(poly1));
-}
-
-TEST(environment, polygon_env_collision_free) {
-  auto env = environment::Environment<double>();
-  {
-    env.add_polygons(poly0);
-    env.add_polygons(poly1);
-  }
-  EXPECT_FALSE(env.collide(poly2));
-}
+//TEST(environment, polygon_env_collide) {
+//  auto env = environment::Environment<double>();
+//  {
+//    env.add_polygons(poly0);
+//    env.add_polygons(poly1);
+//  }
+//  EXPECT_TRUE(env.collide(poly1));
+//}
+//
+//TEST(environment, polygon_env_collision_free) {
+//  auto env = environment::Environment<double>();
+//  {
+//    env.add_polygons(poly0);
+//    env.add_polygons(poly1);
+//  }
+//  EXPECT_FALSE(env.collide(poly2));
+//}
 
 // TEST(environment, circle_env_collide) {
 //   auto env = environment::Environment<double>();

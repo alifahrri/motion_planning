@@ -152,18 +152,37 @@ bool parametrized_line_circle_collision(const p1_t &p1, const p2_t &p2, const sc
 	return collision;
 }
 
+// type agnostic collision check functions
 namespace collision
 {
 
-// using namespace std;
-// using namespace elements;
-
-// see https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-template <int x_idx=0, int y_idx=1>
+// implementation of line collision in 3d,
+// overloaded with template parameter
+template <int x_idx, int y_idx, int z_idx>
 ATTRIBUTE
 inline
-auto line_line_collision(const auto &pt0, const auto &pt1, const auto &pt2, const auto &pt3)
--> decltype(elements::x(pt0), elements::y(pt0), elements::x(pt1), elements::y(pt1), elements::x(pt2), elements::y(pt2), elements::x(pt3), elements::y(pt3), bool())
+auto line_line_collision_(const auto &pt0, const auto &pt1, const auto &pt2, const auto &pt3)
+-> decltype(elements::x(pt0), elements::y(pt0), elements::z(pt0), 
+						elements::x(pt1), elements::y(pt1), elements::z(pt1), 
+						elements::x(pt2), elements::y(pt2), elements::z(pt2), 
+						elements::x(pt3), elements::y(pt3), elements::z(pt3), 
+						bool{})
+{
+	
+}
+
+// implementation of line collision in 2d,
+// overloaded with template parameter
+// see https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+template <int x_idx, int y_idx>
+ATTRIBUTE
+inline
+auto line_line_collision_(const auto &pt0, const auto &pt1, const auto &pt2, const auto &pt3)
+-> decltype(elements::x(pt0), elements::y(pt0), 
+						elements::x(pt1), elements::y(pt1), 
+						elements::x(pt2), elements::y(pt2), 
+						elements::x(pt3), elements::y(pt3), 
+						bool{})
 {
 	using elements::x;
 	using elements::y;
@@ -192,71 +211,223 @@ auto line_line_collision(const auto &pt0, const auto &pt1, const auto &pt2, cons
 	return false;
 }
 
-template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+// entry-point for line collision!
+// TODO : support for SFINAE!
+template <int ...indexes>
+ATTRIBUTE
+inline
+auto line_line_collision(const auto &pt0, const auto &pt1, const auto &pt2, const auto &pt3)
+{
+	constexpr auto dim = sizeof...(indexes);
+	// warn : if not specified, default call to 2d!
+//	if constexpr(dim == 0) {
+//		return line_line_collision_<0,1>(pt0,pt1,pt2,pt3);
+//	} else if(dim == 2) {
+//		return line_line_collision_<indexes...>(pt0,pt1,pt2,pt3);
+//	} else if(dim == 3) {
+//		return line_line_collision_<indexes...>(pt0,pt1,pt2,pt3);
+//	} else {
+//		// TODO : generate compile error!
+//	}
+	if constexpr(dim == 0) {
+		return line_line_collision_<0,1>(pt0, pt1, pt2, pt3);
+	} else {
+		return line_line_collision_<indexes...>(pt0, pt1, pt2, pt3);
+	}
+}
+
+// template <int x_idx=0, int y_idx=1, int z_idx=2, int p0_idx=0, int p1_idx=1>
+template <int ...indexes>
 ATTRIBUTE
 inline
 auto line_line_collision(const auto &line0, const auto &line1)
--> decltype(elements::p0<p0_idx>(line0), elements::p1<p1_idx>(line0), elements::p0<p0_idx>(line1), elements::p1<p1_idx>(line1), bool())
+// all of these expression must be valid :
+//-> decltype(elements::p0<p0_idx>(line0), elements::p1<p1_idx>(line0), 
+//						elements::p0<p0_idx>(line1), elements::p1<p1_idx>(line1), 
+//						line_line_collision(
+//							elements::p0<p0_idx>(line0), elements::p1<p1_idx>(line0),
+//							elements::p0<p0_idx>(line1), elements::p1<p1_idx>(line1)
+//						),
+//						bool{})
 {
 	using elements::p0;
 	using elements::p1;
-	return line_line_collision<x_idx,y_idx>(p0<p0_idx>(line0),p1<p1_idx>(line0),p0<p0_idx>(line1),p1<p1_idx>(line1));
+	constexpr auto dim = sizeof...(indexes);
+	// constexpr std::array<int,dim> index_array(indexes...);
+	constexpr int idx[dim] = {indexes...};
+	if constexpr((dim == 0) || (dim == 2) || (dim == 4)) {
+		// this should call 2d line collision :
+		if constexpr(dim == 0) {
+			return line_line_collision<0,1>(p0(line0),p1(line0),p0(line1),p1(line1));
+		} else if(dim == 2) {
+			return line_line_collision<idx[0],idx[1]>(p0(line0),p1(line0),p0(line1),p1(line1));
+		} else if(dim == 4) {
+			return line_line_collision<idx[0],idx[1]>(
+												p0<idx[2]>(line0),p1<idx[3]>(line0),
+												p0<idx[2]>(line1),p1<idx[3]>(line1)
+											);
+		}
+	} else if((dim == 3) || (dim == 5)) {
+		// this should call 3d line collision :
+		if constexpr(dim == 3) {
+			return line_line_collision<idx[0],idx[1],idx[2]>(p0(line0),p1(line0),p0(line1),p1(line1));
+		} else if(dim == 5) {
+			return line_line_collision<idx[0],idx[1],idx[2]>(
+												p0<idx[3]>(line0),p1<idx[4]>(line0),
+												p0<idx[3]>(line1),p1<idx[4]>(line1)
+											);
+		}
+	} else {
+		// TODO : generate compile error!
+	}
 }
 
-template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+// helper compile-time function
+template <size_t n, int ...values>
+constexpr auto get_n_values(size_t idx) {
+	constexpr int v[sizeof...(values)] = {values...};
+	constexpr auto dim = n;
+	std::array<int,dim> ret;
+	for(size_t i=0; (i<n) && (i+idx < sizeof...(values)); i++)
+		ret[i] = v[i+idx];
+	return ret;
+}
+// helper compile-time function
+template <int ...indexes>
+constexpr auto get_indexes() {
+	constexpr auto dim = sizeof...(indexes);
+	// std::pair<int,int> dims;
+	// dims.second = 2; // line indexes
+	constexpr std::array<int,2> def_pt_idx = {0,1};
+	constexpr std::array<int,2> def_ln_idx = {0,1};
+	if constexpr(dim == 0) {
+		return std::make_pair(def_pt_idx,def_ln_idx);
+	} else if(dim == 2) {
+		return std::make_pair(
+			get_n_values<2,indexes...>(0),
+			def_ln_idx
+		);
+	} else if(dim == 4) {
+		return std::make_pair(
+			get_n_values<2,indexes...>(0),
+			get_n_values<2,indexes...>(2)
+		);
+	} else if(dim == 3) {
+		return std::make_pair(
+			get_n_values<3,indexes...>(0),
+			def_ln_idx
+		);
+	} else if(dim == 5) {
+		return std::make_pair(
+			get_n_values<3,indexes...>(0),
+			get_n_values<2,indexes...>(3)
+		);
+	}
+// the following expr need to have consistent return value
+//	switch(dim) {
+//		case 0 : 
+//			return std::make_pair(def_pt_idx,def_ln_idx);
+//		case 2 : 
+//			return std::make_pair(
+//				get_n_values<2,indexes...>(0),
+//				def_ln_idx
+//			);
+//		case 4 :
+//			return std::make_pair(
+//				get_n_values<2,indexes...>(0),
+//				get_n_values<2,indexes...>(2)
+//			);
+//		case 3 :
+//			return std::make_pair(
+//				get_n_values<3,indexes...>(0),
+//				def_ln_idx
+//			);
+//		case 5 :
+//			return std::make_pair(
+//				get_n_values<3,indexes...>(0),
+//				get_n_values<2,indexes...>(3)
+//			);
+//	}
+	// constexpr auto point_idx = get_n_values<indexes...>(0, dims.first);
+	// constexpr auto line_idx = get_n_values<indexes...>(dims.first, dims.second);
+	// return std::make_pair(point_idx, line_idx);
+}
+
+// template <int x_idx=0, int y_idx=1, int z_idx=2, int p0_idx=0, int p1_idx=1>
+template <int ...indexes>
 ATTRIBUTE
 inline
 auto line_poly_collision(const auto &line, const auto &poly)
--> decltype(elements::line(poly, 0), bool())
+-> decltype(elements::line(poly, 0), bool{})
 {
 	bool collision = false;
 	auto check = [&](const auto &pline) {
-		collision = line_line_collision<x_idx,y_idx>(line, pline) ? true : collision;
+		collision = line_line_collision<indexes...>(line, pline) ? true : collision;
 	};
 	elements::poly_iter(poly, check);
 	return collision;
 }
 
-template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+// template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+template <int ...indexes>
 ATTRIBUTE
 inline
 auto poly_poly_collision(const auto &poly0, const auto &poly1)
--> decltype(elements::line(poly0, 0), elements::line(poly1, 0), bool())
+-> decltype(elements::line(poly0, 0), elements::line(poly1, 0), bool{})
 {
 	bool collision = false;
 	auto check = [&](const auto &line0) {
-		collision = (line_poly_collision<x_idx,y_idx,p0_idx,p1_idx>(line0, poly1) ? true : collision);
+		collision = (line_poly_collision<indexes...>(line0, poly1) ? true : collision);
 	};
 	elements::poly_iter(poly0, check);
 	return collision;
 }
 
-template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+// template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
+template <int ...indexes>
 ATTRIBUTE
 inline
 auto point_inside_poly(const auto &pt, const auto &poly)
--> decltype(elements::x<x_idx>(pt), elements::y<y_idx>(pt), elements::line(poly, 0), bool())
+// TODO : support sfinae
+// -> decltype(elements::x<x_idx>(pt), elements::y<y_idx>(pt), elements::line(poly, 0), bool{})
 {
-	using pt_t = std::remove_cv_t<std::remove_reference_t<decltype(pt)>>;
-	pt_t test_line[2];
-	elements::x<x_idx>(test_line[0]) = 1000000;
-	elements::y<y_idx>(test_line[0]) = elements::y<y_idx>(pt);
-	elements::x<x_idx>(test_line[1]) = elements::x<x_idx>(pt);
-	elements::y<y_idx>(test_line[1]) = elements::y<y_idx>(pt);
-	size_t count = 0;
-	auto check = [&](const auto &line) {
-		if(line_line_collision<x_idx, y_idx, p0_idx, p1_idx>(line, test_line))
-			count++;
-	};
-	elements::poly_iter(poly, check);
-	return bool(count&1);
+	constexpr auto idx = get_indexes<indexes...>();
+	if constexpr(idx.first.size() == 2) {		
+		using pt_t = std::remove_cv_t<std::remove_reference_t<decltype(pt)>>;
+		pt_t test_line[2];
+		// it turns out that these structured binding (with constexpr)
+		// were not allowed at the moment
+		// constexpr auto [x_idx, y_idx] = idx.first;
+		// constexpr auto [p0_idx, p1_idx] = idx.second;
+		constexpr size_t x_idx = idx.first[0];
+		constexpr size_t y_idx = idx.first[1];
+		constexpr size_t p0_idx = idx.second[0];
+		constexpr size_t p1_idx = idx.second[1];
+		elements::x<x_idx>(test_line[0]) = 1000000;
+		elements::y<y_idx>(test_line[0]) = elements::y<y_idx>(pt);
+		elements::x<x_idx>(test_line[1]) = elements::x<x_idx>(pt);
+		elements::y<y_idx>(test_line[1]) = elements::y<y_idx>(pt);
+		size_t count = 0;
+		auto check = [&](const auto &line) {
+			if(line_line_collision<x_idx, y_idx, p0_idx, p1_idx>(line, test_line))
+				count++;
+		};
+		elements::poly_iter(poly, check);
+		return bool(count&1);
+	} else {
+		// TODO : provide 3d version
+	}
 }
 
 template <int x_idx=0, int y_idx=1, int r_idx=2, int p0_idx=0, int p1_idx=1>
 ATTRIBUTE
 inline
 auto circle_poly_collision(const auto &circle, const auto &poly)
--> decltype(elements::radius<r_idx>(circle), elements::x<x_idx>(circle), elements::y<y_idx>(circle), elements::line(poly, 0), bool())
+-> decltype(elements::radius<r_idx>(circle), 
+						elements::x<x_idx>(circle), 
+						elements::y<y_idx>(circle), 
+						elements::line(poly, 0), 
+						bool{})
 {
 	bool collision = false;
 	using circle_t = std::remove_cv_t<std::remove_reference_t<decltype(circle)>>;
@@ -265,19 +436,26 @@ auto circle_poly_collision(const auto &circle, const auto &poly)
 	if(point_inside_poly(circle, poly))
 		return true;
 	auto check = [&](const auto &line) {
-		collision = line_circle_collision<x_idx, y_idx>(elements::p0<p0_idx>(line), elements::p1<p1_idx>(line), iterable_circle, elements::radius<r_idx>(circle)) ? true : collision;
+		const auto& p0 = elements::p0<p0_idx>(line);
+		const auto& p1 = elements::p1<p1_idx>(line);
+		const auto& radius = elements::radius<r_idx>(circle);
+		collision = line_circle_collision<x_idx, y_idx>(p0, p1, iterable_circle, radius) ? true : collision;
 	};
 	elements::poly_iter(poly, check);
 	return collision;
 }
 
 template <int x_idx=0, int y_idx=1, int p0_idx=0, int p1_idx=1>
-ATTRIBUTE
+// ATTRIBUTE
 inline
 auto line_grid_collision(const auto &line, const auto &grid) 
--> decltype(elements::p0<p0_idx>(line), elements::p1<p1_idx>(line), bool())
+-> decltype(elements::p0<p0_idx>(line), 
+						elements::p1<p1_idx>(line), 
+						bool{})
 {
-	return grid.collide(elements::p0<p0_idx>(line), elements::p1<p1_idx>(line));
+	const auto& p0 = elements::p0<p0_idx>(line);
+	const auto& p1 = elements::p1<p1_idx>(line);
+	return grid.collide(p0, p1);
 }
 
 } // namespace collision
