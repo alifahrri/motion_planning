@@ -215,7 +215,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
-catkin_add_gtest(${PROJECT_NAME}-test tests/unittest.cpp)
+catkin_add_gtest(${PROJECT_NAME}-test 
+	tests/unittest.cpp 
+	tests/collision.cpp 
+	tests/environment.cpp 
+	tests/gridmap.cpp
+	)
 if(TARGET ${PROJECT_NAME}-test)
   target_link_libraries(${PROJECT_NAME}-test collision ${GTEST_LIBRARIES} ${catkin_LIBRARIES})
 endif()
