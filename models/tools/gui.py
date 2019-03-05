@@ -17,11 +17,41 @@ class ModelGenGUI(object) :
     self.text_group = QtWidgets.QGroupBox("output")
     self.text_layout = QtWidgets.QGridLayout()
 
-        # tab settings for source codes
+    # prepare button to save generated code
+    self.save_model_btn = QtWidgets.QPushButton("save model")
+    self.save_main_btn = QtWidgets.QPushButton("save main")
+    self.save_test_btn = QtWidgets.QPushButton("save test")
+    btn = [self.save_model_btn, self.save_main_btn, self.save_test_btn]
+
+    # prepare tab page
+    self.page_model = QtWidgets.QGridLayout()
+    self.page_main = QtWidgets.QGridLayout()
+    self.page_test = QtWidgets.QGridLayout()
+    page = [self.page_model, self.page_main, self.page_test]
+    ## add text and button to the page
+    self.page_model.addWidget(self.text,0,0)
+    self.page_main.addWidget(self.text_main,0,0)
+    self.page_test.addWidget(self.text_test,0,0)
+    hlayout, widget = QtWidgets.QHBoxLayout, QtWidgets.QWidget
+    ### prepare nice layout
+    bl = [hlayout(), hlayout(), hlayout()]
+    ### dummy widget for spacer
+    dw = [widget(), widget(), widget()]
+    for i in range(len(bl)) :
+      bl[i].addWidget(dw[i])
+      bl[i].addWidget(btn[i])
+      page[i].addLayout(bl[i],1,0)
+
+    # tab settings for source codes
     self.tab = QtWidgets.QTabWidget()
-    self.tab.insertTab(0,self.text, "models")
-    self.tab.insertTab(1,self.text_main, "main")
-    self.tab.insertTab(2,self.text_test, "test")
+    # self.tab.insertTab(0,self.text, "models")
+    # self.tab.insertTab(1,self.text_main, "main")
+    # self.tab.insertTab(2,self.text_test, "test")
+    label = ["models", "main", "test"]
+    for i in range(len(label)) :
+      w = widget()
+      w.setLayout(page[i])
+      self.tab.insertTab(i,w,label[i])
 
     self.text_layout.addWidget(self.tab,0,0)
     self.text_group.setLayout(self.text_layout)
@@ -64,13 +94,11 @@ class ModelGenGUI(object) :
 
     self.setSysLayout()
 
-    self.save_model_btn = QtWidgets.QPushButton("save model")
-    self.save_main_btn = QtWidgets.QPushButton("save main")
     self.gen_btn = QtWidgets.QPushButton("generate!")
     self.gen_btn.clicked.connect(self.generate)
     self.cfg_layout.addWidget(self.gen_btn,4,0)
-    self.cfg_layout.addWidget(self.save_model_btn,5,0)
-    self.cfg_layout.addWidget(self.save_main_btn,6,0)
+    # self.cfg_layout.addWidget(self.save_model_btn,5,0)
+    # self.cfg_layout.addWidget(self.save_main_btn,6,0)
 
     self.save_model_btn.clicked.connect(self.save_model)
     self.save_main_btn.clicked.connect(self.save_main)
