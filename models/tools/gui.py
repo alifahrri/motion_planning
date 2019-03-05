@@ -10,14 +10,18 @@ class ModelGenGUI(object) :
     self.u_dim = 1
 
     self.widgets = QtWidgets.QWidget()
+    # text edit widget for source codes
     self.text = QtWidgets.QTextEdit()
     self.text_main = QtWidgets.QTextEdit()
+    self.text_test = QtWidgets.QTextEdit()
     self.text_group = QtWidgets.QGroupBox("output")
     self.text_layout = QtWidgets.QGridLayout()
 
+        # tab settings for source codes
     self.tab = QtWidgets.QTabWidget()
     self.tab.insertTab(0,self.text, "models")
     self.tab.insertTab(1,self.text_main, "main")
+    self.tab.insertTab(2,self.text_test, "test")
 
     self.text_layout.addWidget(self.tab,0,0)
     self.text_group.setLayout(self.text_layout)
@@ -149,12 +153,15 @@ class ModelGenGUI(object) :
     [g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp] = generate_controller(A,B)
     code_str = generate_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
     code_src = generate_cpp_main(model_name)
+    code_test = generate_test_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
 
     code_str = parse_cpp(code_str)
     code_src = parse_cpp(code_src)
+    code_test = parse_cpp(code_test)
 
     self.text.append(code_str)
     self.text_main.append(code_src)
+    self.text_test.append(code_test)
 
   def show(self) :
     self.widgets.showMaximized()
