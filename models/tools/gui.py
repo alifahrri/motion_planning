@@ -3,6 +3,7 @@
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 from generator import *
+from code_generator import CodeGenerator
 
 class ModelGenGUI(object) :
   def __init__(self, **kwargs) :
@@ -190,10 +191,14 @@ class ModelGenGUI(object) :
         str = replace_color(str,k,v)
       return str
 
-    [g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp] = generate_controller(A,B)
-    code_str = generate_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
+    # [g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp] = generate_controller(A,B)
+    # code_str = generate_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
+    code_gen = CodeGenerator()
+    code_gen.generate_controller(A,B)
+    code_str = code_gen.generate_ccode(model_name, dim, u_dim)
     code_src = generate_cpp_main(model_name)
-    code_test = generate_test_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
+    code_test = code_gen.generate_test_ccode(model_name, dim, u_dim)
+    # code_test = generate_test_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
 
     code_str = parse_cpp(code_str)
     code_src = parse_cpp(code_src)

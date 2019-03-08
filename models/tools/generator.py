@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import sympy
 from code_template import *
-
+		
 def generate_controller(mA, mB) :
   r, t, b, tau = sympy.symbols('r t b tau')
   #r, t, po, vo, pf, vf, b, tau = sympy.symbols('r t po vo pf vf b tau')
@@ -30,8 +27,8 @@ def generate_controller(mA, mB) :
   x = []
   for i in range(n) :
     x.append(sympy.symbols('x%s'%i))
-
   xi_list, xf_list = [], []
+
   if_var_str, if_set_str = 'Scalar ', ''
   for i in range(n) :
     if_var_str = if_var_str + 'x%si'%i + ', ' + 'x%sf'%i
@@ -44,12 +41,9 @@ def generate_controller(mA, mB) :
 
   xi = sympy.Matrix(xi_list)
   xf = sympy.Matrix(xf_list)
-  #xo = sympy.Matrix([[po], [vo]])
-  #xf = sympy.Matrix([[pf], [vf]])
   xbar = sympy.exp(A*t)*xi
 
   G = sympy.integrate(sympy.exp(A*(t-tau))*B*R.inv()*B.transpose()*sympy.exp(A.transpose()*(t-tau)), (tau, 0, t))
-  #G = sympy.Matrix([[t**3/(3*r), t**2/(2*r)],[t**2/(2*r), t/r]])
   d = G.inv() * (xf - xbar)
 
   t1 = (2*A*xf).transpose()*d
@@ -61,16 +55,6 @@ def generate_controller(mA, mB) :
   for i in range(n) :
     aabb.append([xbar[i]-sympy.sqrt(G[i,i]*(b-t)), xbar[i]+sympy.sqrt(G[i,i]*(b-t))])
     d_aabb.append([sympy.diff(aabb[i][0],t), sympy.diff(aabb[i][1], t)])
-
-  #p_min = xbar[0]-sympy.sqrt(G[0,0]*(b-t))
-  #p_max = xbar[0]+sympy.sqrt(G[0,0]*(b-t))
-  #v_min = xbar[1]-sympy.sqrt(G[1,1]*(b-t))
-  #v_max = xbar[1]+sympy.sqrt(G[1,1]*(b-t))
-
-  #dp_min = sympy.diff(p_min, t)
-  #dp_max = sympy.diff(p_max, t)
-  #dv_min = sympy.diff(v_min, t)
-  #dv_max = sympy.diff(v_max, t)
 
   vr = sympy.Matrix([sympy.pi**2*(G*(b-t)).det()])
   eat = sympy.exp(A*t)
@@ -144,12 +128,6 @@ def generate_controller(mA, mB) :
         d_aabb_str = d_aabb_str + ', '
   aabb_str = aabb_str + ';'
   d_aabb_str = d_aabb_str + ';'
-  # print gram_str
-  # print cost_str
-  # print dc_str
-  # print vr_str
-  # print aabb_str
-  # print d_aabb_str
   c_code = {
 		# system matrix :
     'A' : a_str,
@@ -172,9 +150,49 @@ def generate_controller(mA, mB) :
     'exp_cmp' : exp_cmp_mat_str,
     'cmp.A' : cmp_mat_str
   }
+  symbols = {
+    'A' : A,
+    'B' : B,
+    'R' : R,
+    'eAt' : eat,
+    'composite_matrix' : cmp_mat,
+    'exp_composite_matrix' : exp_cmp_mat,
+    'd' : d,
+    'x_bar' : xbar,
+    'gramian' : G,
+    'cost' : c,
+    'd_cost' : dc,
+    'dim' : n,
+    # 'u_dim' : u_dim
+  }
   # return c_code
-  return [gram_str,jordan_str,eat_str,cost_str,dc_str,aabb_str,d_aabb_str,vr_str, if_var_str, if_set_str, a_str, b_str, c_str, cmp_J_str, cmp_P_str, exp_cmp_mat_str]
+  # return [gram_str,jordan_str,eat_str,cost_str,dc_str,aabb_str,d_aabb_str,vr_str, if_var_str, if_set_str, a_str, b_str, c_str, cmp_J_str, cmp_P_str, exp_cmp_mat_str]
+  return parse_ccode(c_code), symbols, c_code
+
+def parse_ccode(ccode) :
+  return [
+    ccode['gramian'],
+    ccode['jordan'],
+    ccode['exp'],
+    ccode['cost'],
+    ccode['dcost'],
+    ccode['aabb'],
+    ccode['daabb'],
+    ccode['vr'], 
+    ccode['variable'],
+    ccode['set_variable'], 
+    ccode['A'], 
+    ccode['B'], 
+    ccode['C'], 
+    ccode['cmp_j'], 
+    ccode['cmp_p'], 
+    ccode['exp_cmp']
+  ]
 
 def generate_ccode(model_name, dim, u_dim, code_dict) :
   d = code_dict
-  return generate_cpp(model_name, dim, u_dim, d['gramian'], d['jordan'], d['exp'], d['cost'], d['dcost'], d['aabb'], d['daabb'], d['vr'], d['variable'], d['set_variable'], d['A'], d['B'], d['C'], d['cmp_j'], d['cmp_p'])
+  return generate_cpp(model_name, dim, u_dim, d['gramian'], d['jordan'], d['exp'], d['cost'], d['dcost'], d['aabb'], d['daabb'], d['vr'], d['variable'], d['set_variable'], d['A'], d['B'], d['C'], d['cmp_j'], d['cmp_p'], d['exp_cmp'])
+
+def generate_test_ccode(model_name, dim, u_dim, code_dict) :
+  d = code_dict
+  return generate_test_cpp(model_name, dim, u_dim, d['gramian'], d['jordan'], d['exp'], d['cost'], d['dcost'], d['aabb'], d['daabb'], d['vr'], d['variable'], d['set_variable'], d['A'], d['B'], d['C'], d['cmp_j'], d['cmp_p'], d['exp_cmp'])
