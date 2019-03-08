@@ -100,8 +100,12 @@ class ModelGenGUI(object) :
     # self.cfg_layout.addWidget(self.save_model_btn,5,0)
     # self.cfg_layout.addWidget(self.save_main_btn,6,0)
 
+    # connect widget
+    ## save button
     self.save_model_btn.clicked.connect(self.save_model)
     self.save_main_btn.clicked.connect(self.save_main)
+    self.save_test_btn.clicked.connect(self.save_test)
+    ## spinbox state and input dimension
     self.dim_box.valueChanged.connect(self.setSysLayout)
     self.u_dim_box.valueChanged.connect(self.setSysLayout)
 
@@ -120,6 +124,14 @@ class ModelGenGUI(object) :
     if filename[0] :
       with open(filename[0],'w+') as f:
         f.write(src)
+				
+  def save_test(self) :
+    filename = QtWidgets.QFileDialog.getSaveFileName()
+    src = self.text_test.toPlainText()
+    print filename
+    if filename[0] :
+      with open(filename[0],'w+') as f:
+	f.write(src)
 
   def generate(self) :
     A, B = [], []

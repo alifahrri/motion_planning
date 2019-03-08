@@ -234,9 +234,9 @@ target_link_libraries(${PROJECT_NAME}_integrator2d_trajectory
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(${PROJECT_NAME}-test tests/unittest.cpp)
+catkin_add_gtest(${PROJECT_NAME}-test tests/unittest.cpp tests/integrator2d_test.cpp tests/integrator3d_test.cpp)
 if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+  target_link_libraries(${PROJECT_NAME}-test ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 endif()
 
 ## Add folders to be run by python nosetests
