@@ -15,6 +15,7 @@ class ModelGenGUI(object) :
     self.text = QtWidgets.QTextEdit()
     self.text_main = QtWidgets.QTextEdit()
     self.text_test = QtWidgets.QTextEdit()
+    self.text_latex = QtWidgets.QTextEdit()
     self.text_group = QtWidgets.QGroupBox("output")
     self.text_layout = QtWidgets.QGridLayout()
 
@@ -22,33 +23,46 @@ class ModelGenGUI(object) :
     self.save_model_btn = QtWidgets.QPushButton("save model")
     self.save_main_btn = QtWidgets.QPushButton("save main")
     self.save_test_btn = QtWidgets.QPushButton("save test")
+    ## button to save .tex and .pdf
+    self.save_latex_btn = QtWidgets.QPushButton("save latex")
+    self.save_pdf_btn = QtWidgets.QPushButton("save pdf")
     btn = [self.save_model_btn, self.save_main_btn, self.save_test_btn]
+    tex_btn = [self.save_latex_btn, self.save_pdf_btn]
 
     # prepare tab page
     self.page_model = QtWidgets.QGridLayout()
     self.page_main = QtWidgets.QGridLayout()
     self.page_test = QtWidgets.QGridLayout()
-    page = [self.page_model, self.page_main, self.page_test]
+    self.page_latex = QtWidgets.QGridLayout()
+    page = [self.page_model, self.page_main, self.page_test, self.page_latex]
     ## add text and button to the page
     self.page_model.addWidget(self.text,0,0)
     self.page_main.addWidget(self.text_main,0,0)
     self.page_test.addWidget(self.text_test,0,0)
+    self.page_latex.addWidget(self.text_latex,0,0)
     hlayout, widget = QtWidgets.QHBoxLayout, QtWidgets.QWidget
     ### prepare nice layout
-    bl = [hlayout(), hlayout(), hlayout()]
+    bl = [hlayout(), hlayout(), hlayout(), hlayout()]
     ### dummy widget for spacer
-    dw = [widget(), widget(), widget()]
+    dw = [widget(), widget(), widget(), widget()]
     for i in range(len(bl)) :
+      if i >= len(btn) :
+        continue
       bl[i].addWidget(dw[i])
       bl[i].addWidget(btn[i])
       page[i].addLayout(bl[i],1,0)
+    ### add two buttons for latex page
+    bl[3].addWidget(dw[3])
+    for b in tex_btn :
+      bl[3].addWidget(b)
+    page[3].addLayout(bl[3],1,0)
 
     # tab settings for source codes
     self.tab = QtWidgets.QTabWidget()
     # self.tab.insertTab(0,self.text, "models")
     # self.tab.insertTab(1,self.text_main, "main")
     # self.tab.insertTab(2,self.text_test, "test")
-    label = ["models", "main", "test"]
+    label = ["models", "main", "test", "latex"]
     for i in range(len(label)) :
       w = widget()
       w.setLayout(page[i])
@@ -106,33 +120,44 @@ class ModelGenGUI(object) :
     self.save_model_btn.clicked.connect(self.save_model)
     self.save_main_btn.clicked.connect(self.save_main)
     self.save_test_btn.clicked.connect(self.save_test)
+    self.save_latex_btn.clicked.connect(self.save_latex)
+    self.save_pdf_btn.clicked.connect(self.save_pdf)
     ## spinbox state and input dimension
     self.dim_box.valueChanged.connect(self.setSysLayout)
     self.u_dim_box.valueChanged.connect(self.setSysLayout)
 
-  def save_model(self) :
+    ## code generator instance
+    self.code_gen = CodeGenerator()
+
+  def save_text(self, text) :
     filename = QtWidgets.QFileDialog.getSaveFileName()
-    src = self.text.toPlainText()
+    src = text
     print filename
     if filename[0] :
       with open(filename[0],'w+') as f:
-        f.write(src)
+	      f.write(src)
+
+  def save_model(self) :
+    src = self.text.toPlainText()
+    self.save_text(src)
 
   def save_main(self) :
-    filename = QtWidgets.QFileDialog.getSaveFileName()
     src = self.text_main.toPlainText()
-    print filename
-    if filename[0] :
-      with open(filename[0],'w+') as f:
-        f.write(src)
+    self.save_text(src)
 				
   def save_test(self) :
-    filename = QtWidgets.QFileDialog.getSaveFileName()
     src = self.text_test.toPlainText()
+    self.save_text(src)
+
+  def save_latex(self) :
+    src = self.text_latex.toPlainText()
+    self.save_text(src)
+  
+  def save_pdf(self) :
+    filename = QtWidgets.QFileDialog.getSaveFileName()
     print filename
     if filename[0] :
-      with open(filename[0],'w+') as f:
-	f.write(src)
+      self.code_gen.generate_pdf(filename[0])
 
   def generate(self) :
     A, B = [], []
@@ -193,11 +218,12 @@ class ModelGenGUI(object) :
 
     # [g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp] = generate_controller(A,B)
     # code_str = generate_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
-    code_gen = CodeGenerator()
+    code_gen = self.code_gen
     code_gen.generate_controller(A,B)
     code_str = code_gen.generate_ccode(model_name, dim, u_dim)
     code_src = generate_cpp_main(model_name)
     code_test = code_gen.generate_test_ccode(model_name, dim, u_dim)
+    code_latex = code_gen.generate_latex(model_name)
     # code_test = generate_test_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp)
 
     code_str = parse_cpp(code_str)
@@ -207,6 +233,7 @@ class ModelGenGUI(object) :
     self.text.append(code_str)
     self.text_main.append(code_src)
     self.text_test.append(code_test)
+    self.text_latex.append(code_latex)
 
   def show(self) :
     self.widgets.showMaximized()
