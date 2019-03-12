@@ -5,6 +5,23 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from generator import *
 from code_generator import CodeGenerator
 
+class NonLinearBox(QtWidgets.QWidget) :
+  def __init__(self, parent=None) :
+    QtWidgets.QWidget.__init__(self, parent)
+    self.nonlinear_layout = QtWidgets.QHBoxLayout()
+    self.items = {
+      'sbox' : QtWidgets.QSpinBox(),
+      'trig' : QtWidgets.QComboBox(),
+      'var' : QtWidgets.QComboBox(),
+    }
+    for key in ['', 'sin', 'cos'] :
+      self.items['trig'].addItem(key)
+    for key in ['sbox', 'trig', 'var'] :
+      self.nonlinear_layout.addWidget(self.items[key])
+    self.setLayout(self.nonlinear_layout)
+    self.layout().setSpacing(0)
+    self.layout().setContentsMargins(0,0,5,5)
+
 class ModelGenGUI(object) :
   def __init__(self, **kwargs) :
     self.dim = 2
@@ -70,16 +87,43 @@ class ModelGenGUI(object) :
 
     self.text_layout.addWidget(self.tab,0,0)
     self.text_group.setLayout(self.text_layout)
+
+    # prepare layout
     self.cfg_layout = QtWidgets.QGridLayout()
     self.main_layout = QtWidgets.QGridLayout()
+    self.matrix_layout = {
+      'page' : {
+        'linear' : QtWidgets.QVBoxLayout(),
+        'nonlinear' : QtWidgets.QVBoxLayout()
+      },
+      'system' : {
+        'linear' : QtWidgets.QGridLayout(),
+        'nonlinear' : QtWidgets.QGridLayout()
+      },
+      'input' : {
+        'linear' : QtWidgets.QGridLayout(),
+        'nonlinear' : QtWidgets.QGridLayout()
+      }
+    }
+    # prepare model group
+    self.model_tab = QtWidgets.QTabWidget()
 
     self.main_layout.addWidget(self.text_group,0,0)
+
     self.dim_box = QtWidgets.QSpinBox()
     self.u_dim_box = QtWidgets.QSpinBox()
     self.model_name_layout = QtWidgets.QGridLayout()
     self.model_name = QtWidgets.QLineEdit()
     self.model_name.setMaximumWidth(200)
 
+    # set layout for nice model name setting
+    model_label = QtWidgets.QLabel('Model Name ')
+    model_label.setMaximumWidth(100)
+    self.model_name_layout.addWidget(model_label,0,0)
+    self.model_name_layout.addWidget(self.model_name,0,1)
+    self.cfg_layout.addLayout(self.model_name_layout, 0, 0)
+
+    # prepare layout for nice dimension config spinbox
     dim_groupbox = QtWidgets.QGroupBox("dimension")
     dim_layout = QtWidgets.QGridLayout()
     dim_layout.addWidget(QtWidgets.QLabel('state dimension : '), 0, 0)
@@ -87,22 +131,72 @@ class ModelGenGUI(object) :
     dim_layout.addWidget(QtWidgets.QLabel('input dimension : '), 1, 0)
     dim_layout.addWidget(self.u_dim_box, 1, 1)
     dim_groupbox.setLayout(dim_layout)
-    model_label = QtWidgets.QLabel('Model Name ')
-    model_label.setMaximumWidth(100)
-
-    self.model_name_layout.addWidget(model_label,0,0)
-    self.model_name_layout.addWidget(self.model_name,0,1)
-    self.cfg_layout.addLayout(self.model_name_layout, 0, 0)
     self.cfg_layout.addWidget(dim_groupbox, 1, 0)
+
+    # set layout for model configuration
+    model_page_label = ["linear", "nonlinear"]
+    for model_label in model_page_label :
+      w = QtWidgets.QWidget()
+      w.setLayout(self.matrix_layout['page'][model_label])
+      self.model_tab.addTab(w, model_label)
+    # add model tab to config layout
+    self.cfg_layout.addWidget(self.model_tab, 2, 0)
+
     self.main_layout.addLayout(self.cfg_layout, 0, 1)
     self.widgets.setLayout(self.main_layout)
 
-    self.sboxes = []
-    self.dynamic_group = QtWidgets.QGroupBox("Dynamic Matrix (A)")
-    self.dynamic_group_layout = QtWidgets.QGridLayout()
-    self.u_sboxes = []
-    self.input_group = QtWidgets.QGroupBox("Input Matrix (B)")
-    self.input_group_layout = QtWidgets.QGridLayout()
+    # set layout for the state space
+    self.sboxes = {
+      'linear' : {
+        'system' : [], 'input' : []
+      },
+      'nonlinear' : {
+        'system' : [], 'input' : []
+      }
+    }
+    self.matrix_group = {
+      'linear' : {
+        'system' : QtWidgets.QGroupBox("Dynamic Matrix (A)"),
+        'input' : QtWidgets.QGroupBox("Input Matrix (B)"),
+      },
+      'nonlinear' : {
+        'system' : QtWidgets.QGroupBox("Dynamic Matrix (A)"),
+        'input' : QtWidgets.QGroupBox("Input Matrix (B)"),
+        'area' : {
+          'system' : QtWidgets.QScrollArea(), 
+          'input' : QtWidgets.QScrollArea(),
+        }
+      },
+    }
+
+    scrollarea = self.matrix_group['nonlinear']['area']
+    for key in ['system', 'input'] :
+      group = self.matrix_group['nonlinear']
+      scrollarea[key].setWidget(group[key])
+      scrollarea[key].setWidgetResizable(True)
+    
+    for key in ['linear', 'nonlinear'] :
+      for kkey in ['system', 'input'] :
+        widget = self.matrix_group[key] if key == 'linear' else self.matrix_group[key]['area']
+        self.matrix_layout['page'][key].addWidget(widget[kkey])
+
+    # self.sboxes = []
+    # self.dynamic_group = QtWidgets.QGroupBox("Dynamic Matrix (A)")
+    # self.dynamic_group_layout = QtWidgets.QGridLayout()
+    # self.u_sboxes = []
+    # self.input_group = QtWidgets.QGroupBox("Input Matrix (B)")
+    # self.input_group_layout = QtWidgets.QGridLayout()
+
+    # self.sboxes = self.boxes['linear']['system']
+    # self.u_sboxes = self.boxes['linear']['input']
+    # self.dynamic_group = self.matrix_group['linear']['system']
+    # self.dynamic_group_layout = self.matrix_layout['linear']
+    # self.input_group = self.matrix_group['linear']['input']
+    # self.input_group_layout = self.matrix_layout['linear']
+
+    # for page_label in model_page_label :
+    #   w = widget()
+    #   self.model_tab.addTab()
 
     self.dim_box.setValue(self.dim)
     self.u_dim_box.setValue(self.u_dim)
@@ -111,7 +205,7 @@ class ModelGenGUI(object) :
 
     self.gen_btn = QtWidgets.QPushButton("generate!")
     self.gen_btn.clicked.connect(self.generate)
-    self.cfg_layout.addWidget(self.gen_btn,4,0)
+    self.cfg_layout.addWidget(self.gen_btn,3,0)
     # self.cfg_layout.addWidget(self.save_model_btn,5,0)
     # self.cfg_layout.addWidget(self.save_main_btn,6,0)
 
@@ -241,31 +335,68 @@ class ModelGenGUI(object) :
   def setSysLayout(self) :
     self.dim = self.dim_box.value()
     self.u_dim = self.u_dim_box.value()
-    if len(self.sboxes) :
-      for s in self.sboxes :
-        s.deleteLater()
-        self.dynamic_group_layout.removeWidget(s)
-    if len(self.u_sboxes) :
-      for s in self.u_sboxes :
-        s.deleteLater()
-        self.input_group_layout.removeWidget(s)
-    del self.sboxes[:]
-    del self.u_sboxes[:]
+    self.set_linear_sys_layout()
+    self.set_nonlinear_sys_layout()
 
+  def set_linear_sys_layout(self) :
+    sboxes = self.sboxes['linear']['system']
+    u_sboxes = self.sboxes['linear']['input']
+    dynamic_group = self.matrix_group['linear']['system']
+    input_group = self.matrix_group['linear']['input']
+    dynamic_group_layout = self.matrix_layout['system']['linear']
+    input_group_layout = self.matrix_layout['input']['linear']
+
+    _delete_sboxes, _add = ModelGenGUI._delete_sboxes, ModelGenGUI._add
+
+    _delete_sboxes(sboxes, dynamic_group_layout)
+    _delete_sboxes(u_sboxes, input_group_layout)
+
+    SpinBox = QtWidgets.QSpinBox
+    _add(sboxes, self.dim, self.dim, SpinBox, dynamic_group_layout, dynamic_group)
+    _add(u_sboxes, self.dim, self.u_dim, SpinBox, input_group_layout, input_group)
+
+  def set_nonlinear_sys_layout(self) :
+    sboxes = self.sboxes['nonlinear']['system']
+    u_sboxes = self.sboxes['nonlinear']['input']
+    dynamic_group = self.matrix_group['nonlinear']['system']
+    input_group = self.matrix_group['nonlinear']['input']
+    dynamic_group_layout = self.matrix_layout['system']['nonlinear']
+    input_group_layout = self.matrix_layout['input']['nonlinear']
+
+    _delete_sboxes, _add = ModelGenGUI._delete_sboxes, ModelGenGUI._add
+
+    _delete_sboxes(sboxes, dynamic_group_layout)
+    _delete_sboxes(u_sboxes, input_group_layout)
+
+    SpinBox = NonLinearBox
+    _add(sboxes, self.dim, self.dim, SpinBox, dynamic_group_layout, dynamic_group)
+    SpinBox = QtWidgets.QSpinBox
+    _add(u_sboxes, self.dim, self.u_dim, SpinBox, input_group_layout, input_group)
+
+    states = ['x{}'.format(i) for i in range(self.dim)]
+    states = [''] + states
     for i in range(self.dim) :
       for j in range(self.dim) :
-        self.sboxes.append(QtWidgets.QSpinBox())
-        self.dynamic_group_layout.addWidget(self.sboxes[-1],i,j)
-    self.dynamic_group.setLayout(self.dynamic_group_layout)
+        sboxes[i*self.dim+j].setToolTip('{},{}'.format(i+1,j+1))
+        for state in states :
+          sboxes[i*self.dim+j].items['var'].addItem(state)
+          
+  @staticmethod
+  def _add(sboxes, x_dim, y_dim, obj, layout, group) :
+    layout.setContentsMargins(0,0,0,0)
+    layout.setSpacing(0)
+    layout.setVerticalSpacing(0)
+    layout.setHorizontalSpacing(0)
+    for i in range(x_dim) :
+      for j in range(y_dim) :
+        sboxes.append(obj()) 
+        layout.addWidget(sboxes[-1],i,j)
+    group.setLayout(layout)
 
-    for i in range(self.dim) :
-      for j in range(self.u_dim) :
-        self.u_sboxes.append(QtWidgets.QSpinBox())
-        self.input_group_layout.addWidget(self.u_sboxes[-1],i,j)
-    self.input_group.setLayout(self.input_group_layout)
-
-    if self.cfg_layout.rowCount() < 3 :
-      self.cfg_layout.addWidget(self.dynamic_group, 2, 0)
-
-    if self.cfg_layout.rowCount() < 4 :
-      self.cfg_layout.addWidget(self.input_group, 3, 0)
+  @staticmethod
+  def _delete_sboxes(sboxes, group_layout) :
+    if len(sboxes) :
+      for s in sboxes :
+        s.deleteLater()
+        group_layout.removeWidget(s)
+      del sboxes[:]
