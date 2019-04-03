@@ -69,6 +69,8 @@ class CodeGenerator() :
         }
         self.latex_doc = None
         self.latex_str = ''
+    def generate_nonlinear_controller(self, mA, mB, trg, var) :
+        generate_nonlinear_controller(mA, mB, trg, var)
     def generate_controller(self, mA, mB) :
         _, self.symbols, self.ccode = generate_controller(mA, mB)
     def generate_ccode(self, model_name, dim, u_dim) :

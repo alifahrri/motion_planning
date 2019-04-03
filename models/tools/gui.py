@@ -160,7 +160,7 @@ class ModelGenGUI(object) :
         'input' : QtWidgets.QGroupBox("Input Matrix (B)"),
       },
       'nonlinear' : {
-        'system' : QtWidgets.QGroupBox("Dynamic Matrix (A)"),
+        'system' : QtWidgets.QGroupBox("Dynamic Matrix (A); f(x,u) = A(x) + Bu"),
         'input' : QtWidgets.QGroupBox("Input Matrix (B)"),
         'area' : {
           'system' : QtWidgets.QScrollArea(), 
@@ -255,13 +255,33 @@ class ModelGenGUI(object) :
 
   def generate(self) :
     A, B = [], []
+    nA, nB, trig, var = [], [], [], []
     for i in range(self.dim) :
       av, bv = [], []
+      n_av, n_bv, n_tv, n_vv = [], [], [], []
       for b in range(self.u_dim) :
-        bv.append(self.u_sboxes[i*self.u_dim+b].value())
+        u_sboxes = self.sboxes['linear']['input']
+        bv.append(u_sboxes[i*self.u_dim+b].value())
+      for c in range(self.u_dim) :
+        u_sboxes = self.sboxes['nonlinear']['input']
+        n_bv.append(u_sboxes[i*self.u_dim+c].value())
       for j in range(self.dim) :
-        av.append(self.sboxes[i*self.dim+j].value())
+        sboxes = self.sboxes['linear']['system']
+        av.append(sboxes[i*self.dim+j].value())
+      for k in range(self.dim) :
+        sboxes = self.sboxes['nonlinear']['system'][i*self.dim+k]
+        items = sboxes.items
+        n_av.append(items['sbox'].value())
+        n_tv.append(items['trig'].currentText())
+        n_vv.append(items['var'].currentText())
       A.append(av), B.append(bv)
+      nA.append(n_av), nB.append(n_bv)
+      trig.append(n_tv), var.append(n_vv)
+    
+    print nA, nB, trig, var
+
+    # test
+    self.code_gen.generate_nonlinear_controller(nA, nB, trig, var)
 
     dim, u_dim = self.dim, self.u_dim
     model_name = self.model_name.text()

@@ -1,6 +1,211 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+def generate_nonlinear_cpp(model_name, **kwargs) :
+  print(
+    model_name,
+    kwargs
+  )
+  code_str(
+    '''
+    // Warning : this code is generated automatically, any changes might be overwritten
+    #ifndef {0}_HPP
+    #define {0}_HPP
+
+    #include "statespace.hpp"
+    #include "statespacesolver.hpp"
+    #include "fixedtimelqr.hpp"
+
+    namespace Models {{
+
+    #define SYS_N {2}
+    #define SYS_P {3}
+    #define SYS_Q {2}
+
+    constexpr int n = SYS_N;
+    constexpr int p = SYS_P;
+    constexpr int q = SYS_Q;
+
+    typedef double Scalar;
+    Scalar r = 1.0;
+
+    struct {0}ClosedExpm
+    {{
+      Eigen::Matrix<Scalar,SYS_N,SYS_N> operator()(Scalar t) const
+      {{
+        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt;
+        {4}
+        return eAt;
+      }}
+      Scalar r = Models::r;
+    }};
+
+    typedef StateSpace<Scalar,SYS_N,SYS_P,SYS_Q,{0}ClosedExpm> {0}SS;
+    typedef StateSpaceSolver<Scalar,SYS_N,SYS_P,SYS_Q,{0}SS> {0}Solver;
+    struct {0}JordanForm
+    {{
+      typedef std::tuple<{0}SS::SystemMatrix,{0}SS::SystemMatrix> Mat;
+      {0}SS::SystemMatrix J, P;
+      {0}JordanForm()
+      {{
+        {5}
+      }}
+      Mat operator()() {{
+        return std::make_tuple(J,P);
+      }}
+    }};
+
+    {0}SS {1};
+    {0}Solver {1}_solver({1});
+
+    struct {0}Cost
+    {{
+      Scalar operator()(const {0}SS::StateType &xi, const {0}SS::StateType &xf, const Scalar &t) const
+      {{
+        Scalar cost;
+        {6}
+        {7}
+        {8}
+        return cost;
+      }}
+      Scalar r = Models::r;
+    }};
+
+    {0}Cost {1}_cost;
+
+    struct {0}OptTimeDiff
+    {{
+      void set(const {0}SS::StateType &xi, const {0}SS::StateType &xf)
+      {{
+        {7}
+      }}
+      Scalar operator()(const Scalar &t) const
+      {{
+        Scalar d_cost;
+        {9}
+        return d_cost;
+      }}
+
+      {6}
+      Scalar r = Models::r;
+    }};
+
+    {0}OptTimeDiff {1}_opt_time_diff;
+
+    struct {0}Gramian
+    {{
+      {0}SS::SystemMatrix operator()(Scalar t) const
+      {{
+        {0}SS::SystemMatrix G;
+        {10}
+        return G;
+      }}
+      Scalar r = Models::r;
+    }};
+
+    {0}Gramian {1}_gram;
+
+    struct {0}CmpClosedExpm
+    {{
+      Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> operator()(Scalar t) const
+      {{
+        Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> eAt;
+        {11}
+        return eAt;
+      }}
+      Scalar r = Models::r;
+    }};
+
+    typedef StateSpace<Scalar,2*SYS_N,SYS_P,SYS_Q,{0}CmpClosedExpm> {0}SSComposite;
+    typedef FixedTimeLQR<{0}SS,{0}Gramian> {0}FixTimeLQR;
+    typedef OptimalTimeFinder<{0}OptTimeDiff> {0}OptTimeSolver;
+    typedef OptTrjSolver<{0}Cost,{0}OptTimeSolver,{0}FixTimeLQR,{0}SS,{0}Gramian,{0}SSComposite> {0}TrajectorySolver;
+
+    {0}SSComposite {1}_ss_cmp;
+    {0}FixTimeLQR {1}_ft_lqr({1},{1},{1}_gram);
+    {0}OptTimeSolver {1}_opt_time_solver({1}_opt_time_diff);
+    {0}TrajectorySolver {1}_trj_solver({1}_cost, {1}_opt_time_solver, {1}_ft_lqr,{1},{1}_gram,{1}_ss_cmp);
+
+    struct {0} {{
+      typedef {0}SS::StateType State;
+      typedef {0}SS::StateType Input;
+
+      {0}()
+      {{
+        auto &ss = this->state_space;
+        ss.{12}
+        ss.{13}
+        ss.{14}
+        // jordan form should be depecrated, use closed form of exp mat instead
+        // TODO : remove
+        {0}JordanForm {1}_jordan_form;
+        auto t = {1}_jordan_form();
+        ss.D = std::get<0>(t);
+        ss.P = std::get<1>(t);
+        ss.P_inv = ss.P.inverse();
+
+        auto R = this->ft_lqr.R;
+        auto &ss_cmp = this->composite_ss;
+        ss_cmp.A << ss.A, ss.B*R.inverse()*ss.B.transpose(), {0}SS::SystemMatrix::Zero(), -ss.A.transpose();
+        ss_cmp.{15}
+        ss_cmp.{16}
+        ss_cmp.P_inv = ss_cmp.P.inverse();
+      }}
+
+      {0}SS state_space;
+      {0}Cost cost;
+      {0}Gramian gramian;
+      {0}SSComposite composite_ss;
+      {0}OptTimeDiff opt_time_diff;
+      {0}FixTimeLQR ft_lqr = {0}FixTimeLQR(state_space, state_space, gramian);
+      {0}OptTimeSolver opt_time_solver = {0}OptTimeSolver(opt_time_diff);
+      {0}TrajectorySolver solver = {0}TrajectorySolver(cost, opt_time_solver, ft_lqr, state_space, gramian, composite_ss);
+
+      // support for changing input weight at runtime;
+      void set_weight(Scalar r) {{
+        cost.r = r;
+        gramian.r = r;
+        opt_time_diff.r = r;
+        using RMat = decltype(ft_lqr.R);
+        ft_lqr.R = RMat::Identity()*r;
+        state_space.exp_fn.r = r;
+        composite_ss.exp_fn.r = r;
+      }}
+    }};
+
+    // [[deprecated(use {0} class instead)]]
+    void init_{1}()
+    {{
+      auto &ss = {1};
+      {0}JordanForm {1}_jordan_form;
+      ss.{12}
+      ss.{13}
+      ss.{14}
+      auto t = {1}_jordan_form();
+      ss.D = std::get<0>(t);
+      ss.P = std::get<1>(t);
+      ss.P_inv = ss.P.inverse();
+
+      auto R = {1}_ft_lqr.R;
+      auto &ss_cmp = {1}_ss_cmp;
+      ss_cmp.A << ss.A, ss.B*R.inverse()*ss.B.transpose(), {0}SS::SystemMatrix::Zero(), -ss.A.transpose();
+      ss_cmp.{15}
+      ss_cmp.{16}
+      ss_cmp.P_inv = ss_cmp.P.inverse();
+    }}
+
+    // [[deprecated(use {0} class instead)]]
+    {0}SS get_{1}()
+    {{
+      return {1};
+    }}
+
+    }} // namespace model
+
+    #endif // MODELS_HPP
+    '''
+  )
+
 def generate_cpp(model_name, dim, u_dim, g, jordan, eat, c, dc, aabb, d_aabb, vr, if_var, if_set, a_str, b_str, c_str, cmp_J_str, cmp_P_str, cmp_exp) :
   print(
     model_name,           #{0}
