@@ -281,15 +281,40 @@ class ModelGenGUI(object) :
     print nA, nB, trig, var
 
     # test
-    self.code_gen.generate_nonlinear_controller(nA, nB, trig, var)
+    # self.code_gen.generate_nonlinear_controller(nA, nB, trig, var)
+    tab_text = self.model_tab.tabText(self.model_tab.currentIndex())
+    print tab_text
+    if tab_text == 'linear' :
+      self.generate_linear_controller(A, B)
+    elif tab_text == 'nonlinear' :
+      self.generate_nonlinear_controller(nA, nB, trig, var)
 
+  def generate_nonlinear_controller(self, A, B, trig, var) :
+    dim, u_dim = self.dim, self.u_dim
+    model_name = self.model_name.text()
+    self.code_gen.generate_nonlinear_controller(A, B, trig, var)
+    code_str = self.code_gen.generate_nlccode(model_name, dim, u_dim)
+    test_code_str = self.code_gen.generate_test_nlccode(model_name, dim)
+
+    self.text.clear()
+    self.text.append(code_str)
+    self.text_test.clear()
+    self.text_test.append(test_code_str)
+
+  def generate_linear_controller(self, A, B) :
     dim, u_dim = self.dim, self.u_dim
     model_name = self.model_name.text()
 
+    # html_color = self.html_color
+    # replace_color = self.replace_color
+    # parse_cpp = self.parse_cpp
+    # @staticmethod
     def html_color(str, color) :
       return '<span style="color:%s;">%s</span>' %(color,str)
+    # @staticmethod
     def replace_color(str, key, color) :
       return str.replace(key, html_color(key,color))
+    # @staticmethod
     def parse_cpp (str) :
       kwords = {
         '#ifndef ' : 'violet',
@@ -344,6 +369,13 @@ class ModelGenGUI(object) :
     code_src = parse_cpp(code_src)
     code_test = parse_cpp(code_test)
 
+    ## clear text widget befor call append
+    self.text.clear()
+    self.text_main.clear()
+    self.text_test.clear()
+    self.text_latex.clear()
+
+    ## append parsed code to the widget
     self.text.append(code_str)
     self.text_main.append(code_src)
     self.text_test.append(code_test)

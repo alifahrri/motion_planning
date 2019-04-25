@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import sympy
 from code_template import *
 from generator import *
@@ -67,17 +68,25 @@ class CodeGenerator() :
             'exp_cmp' : None,
             'cmp.A' : None
         }
+        self.nl_symbols = {}
+        self.nl_ccode = {}
         self.latex_doc = None
         self.latex_str = ''
     def generate_nonlinear_controller(self, mA, mB, trg, var) :
-        generate_nonlinear_controller(mA, mB, trg, var)
+        self.nl_symbols, self.nl_ccode = generate_nonlinear_controller(mA, mB, trg, var)
     def generate_controller(self, mA, mB) :
         _, self.symbols, self.ccode = generate_controller(mA, mB)
     def generate_ccode(self, model_name, dim, u_dim) :
         code = generate_ccode(model_name, self.symbols['dim'], u_dim, self.ccode)
         return code
+    def generate_nlccode(self, model_name, dim, u_dim) :
+        code = generate_nonlinear_cpp(model_name, dim=dim, u_dim=u_dim, **(self.nl_ccode))
+        return code
+    def generate_test_nlccode(self, model_name, dim) :
+        code = generate_nonlinear_test_cpp(model_name, dim)
+        return code
     def generate_test_ccode(self, model_name, dim, u_dim) :
-        code = generate_test_ccode(model_name, self.symbols['dim'], u_dim, self.ccode)
+        code = generate_test_ccode(model_name, dim, u_dim, self.symbols['dim'], u_dim, self.ccode)
         return code
     def generate_latex(self, model_name) :
         symbols = self.symbols

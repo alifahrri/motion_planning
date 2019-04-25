@@ -1,6 +1,8 @@
 #ifndef STATESPACE_HPP
 #define STATESPACE_HPP
 
+#include "choice.hpp"
+
 #include <type_traits>
 #include <vector>
 #include <functional>
@@ -18,6 +20,133 @@
 #else
 #define ATTRIBUTE
 #endif
+
+namespace helper {
+  template <typename Type, int n, typename SystemMatrix>
+  void computeTransitionMatrix(SystemMatrix &A, SystemMatrix &P, SystemMatrix &D, SystemMatrix &P_inv, auto &&jordan_form_fn)
+  {
+    Eigen::EigenSolver<SystemMatrix> eigen_solver(A);
+
+    // Diagonalization
+    // take only real parts of the given complex vectors from eigen, therefore
+    // it is your job to ensure that the given system has only real eigen values
+    // LIMITATIONS : you should make sure that the resulting Matrix P is Invertible
+    // and has FULL RANK, otherwise the computation wouldn't be make sense
+    // Hint : just print P_inv to see if it is make sense and balanced enough
+    auto eigen_values = eigen_solver.eigenvalues().real();
+
+    // create dictionary for eigen value, and find algebraic multiplicity
+    std::vector<std::pair<Type,int>> eig_values;
+    std::stringstream eg_dict_ss;
+    for(size_t i=0; i<n; i++) {
+      auto it = eig_values.begin();
+      const auto &e = eigen_values(i);
+      for(; it != eig_values.end(); it++) {
+        if(std::get<0>(*it) == e)
+          break;
+      }
+      if(it == eig_values.end())
+        eig_values.push_back(std::make_pair(e,1));
+      else
+        std::get<1>(*it) += 1;
+    }
+    for(const auto &d : eig_values)
+      eg_dict_ss << std::get<0>(d) << ": "<< std::get<1>(d) << ", ";
+
+    if((eig_values.size()<n) && (jordan_form_fn)) {
+      auto t = jordan_form_fn(A);
+      auto J = std::get<0>(t);
+      P = std::get<1>(t);
+      P_inv = P.inverse();
+      D = J;
+      //      SystemMatrix a = P*J*P_inv;
+    }
+    else {
+      P = eigen_solver.eigenvectors().real();
+      P_inv = P.inverse();
+      D = P_inv * A * P;
+    }
+  }
+}
+
+/* sink hole is disabled by default */
+template <bool sink = false, size_t n_functions = 2>
+struct LinearizationConcept {
+
+  template <typename FunctionObject, typename ...Args>
+  static
+  auto linearization_impl(choice<2>, Args&&...args, const auto &state, FunctionObject&& fn)
+    -> decltype(std::tie(args...)=fn(state), bool{}) 
+  {
+    std::tie(args...)=fn(state);
+    return true;
+  }
+
+  template <typename FunctionObject, typename ...Args>
+  static
+  auto linearization_impl(choice<1>, Args&&...args, const auto &state, FunctionObject&& fn)
+    -> decltype(fn(state, args...), bool{}) 
+  {
+    fn(state, args...);
+    return true;
+  }
+
+  template <typename ...Args>
+  static
+  auto linearization_impl(choice<0>, Args...args)
+    -> decltype(sink, bool{}) 
+  {
+    // sink hole, linearization not necessary
+    return true;
+  }  
+
+  template <typename ...Args>
+  auto operator()(Args&& ... args) 
+    -> decltype(linearization_impl(choice<n_functions>{}, args...))
+  {
+    return linearization_impl(choice<n_functions>{}, args...);
+  }
+
+  /* provided for convinience */
+  template <typename ...Args>
+  static
+  auto linearize(Args&& ... args) 
+    -> decltype(this->linearization_impl(choice<n_functions>{}, args...))
+  {
+    return linearization_impl(choice<n_functions>{}, args...);
+  }
+	
+	 /* set linearization if needed */
+	 template <typename ExpFn, typename StateType>
+	 static
+  auto set_linearization_state(choice<2>,  ExpFn &exp_fn, const StateType &state) 
+    -> decltype(exp_fn.linearize(state))
+  {
+    return exp_fn.linearize(state);
+  }
+   template <typename ExpFn, typename StateType>
+	 static
+  auto set_linearization_state(choice<1>,  ExpFn &exp_fn, const StateType &state) 
+    -> decltype(exp_fn.set(state))
+  {
+    return exp_fn.set(state);
+  }
+	template <typename ExpFn, typename StateType>
+	static
+  auto set_linearization_state(choice<0>, ExpFn &exp_fn, const StateType &state) 
+    -> decltype(void())
+  {
+    // sink hole, we don't need any particular fn before linearization
+  }
+	
+	template <typename ExpFn, typename StateType>
+	static
+	auto set_linearization_state(ExpFn &exp_fn, const StateType &state) 
+		-> decltype((set_linearization_state(choice<2>{},exp_fn,state)))
+		{
+			return set_linearization_state(choice<2>{},exp_fn,state);
+		}
+};
 
 struct Factorial {
 #ifndef __CUDA_ARCH__
@@ -66,7 +195,7 @@ struct JordanExp
   Eigen::Matrix<Type,n,n> *D = nullptr;
 };
 
-template <typename Type, int n, int p, int q, typename ExpFN = JordanExp<Type,n>>
+template <typename Type, int n, int p, int q, typename ExpFN = JordanExp<Type,n>, typename LinearizationFN = nullptr_t>
 class StateSpace
 {
 public:
@@ -107,65 +236,64 @@ public:
 #ifndef __CUDA_ARCH__
   void computeTransitionMatrix()
   {
-    Eigen::EigenSolver<SystemMatrix> eigen_solver(A);
-
-    // Diagonalization
-    // take only real parts of the given complex vectors from eigen, therefore
-    // it is your job to ensure that the given system has only real eigen values
-    // LIMITATIONS : you should make sure that the resulting Matrix P is Invertible
-    // and has FULL RANK, otherwise the computation wouldn't be make sense
-    // Hint : just print P_inv to see if it is make sense and balanced enough
-    auto eigen_values = eigen_solver.eigenvalues().real();
-
-    // create dictionary for eigen value, and find algebraic multiplicity
-    std::vector<std::pair<Type,int>> eig_values;
-    std::stringstream eg_dict_ss;
-    for(size_t i=0; i<n; i++) {
-      auto it = eig_values.begin();
-      const auto &e = eigen_values(i);
-      for(; it != eig_values.end(); it++) {
-        if(std::get<0>(*it) == e)
-          break;
-      }
-      if(it == eig_values.end())
-        eig_values.push_back(std::make_pair(e,1));
-      else
-        std::get<1>(*it) += 1;
-    }
-    for(const auto &d : eig_values)
-      eg_dict_ss << std::get<0>(d) << ": "<< std::get<1>(d) << ", ";
-
-    if((eig_values.size()<n) && (jordan_form_fn)) {
-      auto t = jordan_form_fn(A);
-      auto J = std::get<0>(t);
-      P = std::get<1>(t);
-      P_inv = P.inverse();
-      D = J;
-      //      SystemMatrix a = P*J*P_inv;
-    }
-    else {
-      P = eigen_solver.eigenvectors().real();
-      P_inv = P.inverse();
-      D = P_inv * A * P;
-    }
+    helper::computeTransitionMatrix<Type,n>(A,P,D,P_inv,jordan_form_fn);
   }
 #endif
 
 public:
+  /* system matrix */
   SystemMatrix  A;
   InputMatrix   B;
   OutputMatrix  C;
+  /* jordan form (to compute exp) */
   SystemMatrix P;
   SystemMatrix P_inv;
   SystemMatrix D;
+  /* last linearization state */
+  StateType x_hat;
+  /* exponential function */
   ExpFN exp_fn;
+  /* linearization function */
+  LinearizationFN linearization_fn;
+
 #ifndef __CUDA_ARCH__
   JordanFormHelper jordan_form_fn = nullptr;
 #endif
+
+private:
+  /* implementation of linearization calls */
+  auto linearize(choice<1>, const StateType &state) 
+    -> decltype(LinearizationConcept<>::linearize(this->A, linearization_fn))
+  {
+    return LinearizationConcept<>::linearize(A, linearization_fn);
+  }
+  auto linearize(choice<0>, const StateType &state) 
+    -> decltype(LinearizationConcept<>::linearize(this->P, this->D, this->P_inv, linearization_fn))
+  {
+    return LinearizationConcept<>::linearize(P, D, P_inv, linearization_fn);
+  }
+
+  /* set linearization if needed */
+  auto set_linearization_state(const StateType &state)
+		-> decltype(LinearizationConcept<>::set_linearization_state(this->exp_fn, state))
+		{
+			return LinearizationConcept<>::set_linearization_state(this->exp_fn, state);
+		}
+
+public:
+  /* entry point for linearization, only enabled if supported, note : default (nullptr) will fail */
+  auto linearize(const StateType &state) 
+    -> decltype(linearize(choice<1>{}, state))
+  {
+    x_hat = state;
+    set_linearization_state(x_hat);
+    return linearize(choice<1>{}, state);
+  }
 };
 
-template <typename Type, int n, int p, int q>
-class StateSpace<Type,n,p,q,JordanExp<Type,n>>
+// partial specialization
+template <typename Type, int n, int p, int q, typename LinearizationFN>
+class StateSpace<Type,n,p,q,JordanExp<Type,n>,LinearizationFN>
 {
 public:
   typedef Eigen::Matrix<Type,n,1> StateType;
@@ -197,7 +325,8 @@ public:
 #endif
   }
 
-  ATTRIBUTE SystemMatrix expm(Type t) const
+  ATTRIBUTE 
+  SystemMatrix expm(Type t) const
   {
     return P*exp_fn(t)*P_inv;
   }
@@ -205,51 +334,52 @@ public:
 #ifndef __CUDA_ARCH__
   void computeTransitionMatrix()
   {
-    Eigen::EigenSolver<SystemMatrix> eigen_solver(A);
-    auto eigen_values = eigen_solver.eigenvalues().real();
-    std::vector<std::pair<Type,int>> eig_values;
-    std::stringstream eg_dict_ss;
-    for(size_t i=0; i<n; i++) {
-      auto it = eig_values.begin();
-      const auto &e = eigen_values(i);
-      for(; it != eig_values.end(); it++) {
-        if(std::get<0>(*it) == e)
-          break;
-      }
-      if(it == eig_values.end())
-        eig_values.push_back(std::make_pair(e,1));
-      else
-        std::get<1>(*it) += 1;
-    }
-    for(const auto &d : eig_values)
-      eg_dict_ss << std::get<0>(d) << ": "<< std::get<1>(d) << ", ";
-
-    if((eig_values.size()<n) && (jordan_form_fn)) {
-      auto t = jordan_form_fn(A);
-      auto J = std::get<0>(t);
-      P = std::get<1>(t);
-      P_inv = P.inverse();
-      D = J;
-    }
-    else {
-      P = eigen_solver.eigenvectors().real();
-      P_inv = P.inverse();
-      D = P_inv * A * P;
-    }
+    helper::computeTransitionMatrix<Type,n>(A,P,D,P_inv,jordan_form_fn);
   }
 #endif
 
 public:
+  /* system matrix */
   SystemMatrix  A;
   InputMatrix   B;
   OutputMatrix  C;
+  /* jordan form (to compute exp) */
   SystemMatrix P;
   SystemMatrix P_inv;
   SystemMatrix D;
+  /* last linearization state */
+  StateType x_hat;
+  /* exp function */
   JordanExp<Type,n> exp_fn;
+  /* linearization function */
+  LinearizationFN linearization_fn;
 #ifndef __CUDA_ARCH__
   JordanFormHelper jordan_form_fn = nullptr;
 #endif
+
+private:
+  /* implementation of linearization calls */
+  auto linearize(choice<1>, const StateType &state) 
+    -> decltype(LinearizationConcept<>::linearize(this->A, linearization_fn))
+  {
+    return LinearizationConcept<>::linearize(A, linearization_fn);
+  }
+
+  auto linearize(choice<0>, const StateType &state) 
+    -> decltype(LinearizationConcept<>::linearize(this->P, this->D, this->P_inv, linearization_fn))
+  {
+    return LinearizationConcept<>::linearize(P, D, P_inv, linearization_fn);
+  }
+
+public:
+  /* entry point for linearization, only enabled if supported, note : default (nullptr) will fail */
+  auto linearize(const StateType &state) 
+    -> decltype(linearize(choice<1>{}, state))
+  {
+    x_hat = state;
+    return linearize(choice<1>{}, state);
+  }
+
 };
 
 #endif // STATESPACE_HPP

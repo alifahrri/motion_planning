@@ -18,7 +18,7 @@ constexpr int p = SYS_P;
 constexpr int q = SYS_Q;
 
 typedef double Scalar;
-Scalar r = 1.0;
+constexpr Scalar r = 1.0;
 
 struct Integrator3DClosedExpm
 {

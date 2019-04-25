@@ -156,29 +156,6 @@ def generate_nonlinear_controller(mA, mB, trg, var, simplify=True) :
   # G = sympy.Matrix(G.rows, G.cols, [sympy.simplify(G[i]) for i in range(G.rows*G.cols)]) if simplify else G
   print 'gramian : {}'.format(G)
 
-  # c_code = {
-	# 	# system matrix :
-  #   'A' : a_str,
-	# 	# input matrix :
-  #   'B' : b_str,
-  #   'C' : c_str,
-	# 	# controllability gramian :
-  #   'gramian' : gram_str,
-  #   'jordan' : jordan_str,
-  #   'exp' : eat_str,
-  #   'cost' : cost_str,
-  #   'dcost' : dc_str,
-  #   'variable' : if_var_str,
-  #   'set_variable' : if_set_str,
-  #   'vr' : vr_str,
-  #   'aabb' : aabb_str,
-  #   'daabb' : d_aabb_str,
-  #   'cmp_j' : cmp_J_str,
-  #   'cmp_p' : cmp_P_str,
-  #   'exp_cmp' : exp_cmp_mat_str,
-  #   'cmp.A' : cmp_mat_str
-  # }
-
   def generate_solution(A, B, R, c) :
     log.info('generate solution...')
     log.info('generating symbols...')
@@ -223,14 +200,6 @@ def generate_nonlinear_controller(mA, mB, trg, var, simplify=True) :
       'int' : {
         'vec' : sympy.Matrix(2*A.rows,1,list(c)+[0 for _ in range(A.rows)])
       }
-
-      # 'term1' : exp_cmp_mat,
-      # 'term1' : sympy.exp(cmp_mat*(t-tau_star)),
-      ## man, this symbolic computation doesn't resolve
-      # 'term2' : sympy.integrate(sympy.exp(cmp_mat*(t-t_prime))*sympy.Matrix(2*A.rows,1,list(c)+[0 for _ in range(A.rows)]),(t_prime, tau_star, t))
-      ## don't explicitly integrate for now
-      # 'term2' : sympy.exp(cmp_mat*(t-t_prime))*sympy.Matrix(2*A.rows,1,list(c)+[0 for _ in range(A.rows)])
-      # 'term2' : exp_cmp_mat*sympy.Matrix(2*A.rows,1,list(c)+[0 for _ in range(A.rows)])
     }
     log.info('generate solution... done')
     return solution
@@ -245,6 +214,15 @@ def generate_nonlinear_controller(mA, mB, trg, var, simplify=True) :
   # print 'composite_matrix : {}'.format(cmp_mat)
   # print 'exponential of the composite matrix : {}'.format(exp_cmp_mat)
 
+  def compute_jordan_form(A) :
+    t = generate_symbol('t')
+    P, J = A.jordan_form()
+    expJ = sympy.exp(J*t)
+    return P, J, expJ
+
+  print 'computing jordan form of A'
+  P, J, expJ = compute_jordan_form(A)
+
   symbols = {
     'A' : A, 'B' : B, 'R' : R,
     # 'eAt' : eat,
@@ -254,15 +232,74 @@ def generate_nonlinear_controller(mA, mB, trg, var, simplify=True) :
     'gramian' : G,
     'cost' : cost,
     'd_cost' : dcost,
-    'dim' : n,
+    'n' : n,
+    'm' : m,
     'f' : f,
     'c' : c,
+    'P' : P,
+    'J' : J,
+    'expJ' : expJ,
     'solution' : solution
     # 'u_dim' : u_dim
   }
 
-  print symbols
-  return symbols
+  @dispatch(sympy.Matrix, str)
+  def mat_ccode(mat, pfx, operator='<<') :
+    ccode = sympy.ccode
+    code_str = '{} {} '.format(pfx, operator)
+    length = mat.rows*mat.cols
+    for i in range(length) :
+      code_str += ccode(mat[i])
+      code_str += ';' if i == (length-1) else ', '
+    return code_str
+  @dispatch(sympy.MutableDenseMatrix, str)
+  def mat_ccode(mat, pfx, operator='<<') :
+    ccode = sympy.ccode
+    code_str = '{} {} '.format(pfx, operator)
+    length = mat.rows*mat.cols
+    for i in range(length) :
+      code_str += ccode(mat[i])
+      code_str += ';' if i == (length-1) else ', '
+    return code_str
+  @dispatch(sympy.ImmutableDenseMatrix, str)
+  def mat_ccode(mat, pfx, operator='<<') :
+    ccode = sympy.ccode
+    code_str = '{} {} '.format(pfx, operator)
+    length = mat.rows*mat.cols
+    for i in range(length) :
+      code_str += ccode(mat[i])
+      code_str += ';' if i == (length-1) else ', '
+    return code_str
+
+  @dispatch(str, str) 
+  def mat_ccode(mat, pfx, operator='=') :
+    return '{} {} {};'.format(pfx, operator, mat)
+
+  @dispatch(int, str) 
+  def mat_ccode(mat, pfx, operator='=') :
+    return '{} {} {};'.format(pfx, operator, mat)
+
+  ccode = {}
+  for key, value in symbols.items() :
+    # if not any([k in key for k in ['solution','cost']]) :
+      # ccode[key] = sympy.ccode(value)
+    if key == 'solution' :
+      ccode[key] = {
+        'composite mat' : mat_ccode(value['composite mat'], 'cmp_mat'),
+        'jordan' : {
+          'P' : mat_ccode(value['jordan']['P'],'P'),
+          'J' : mat_ccode(value['jordan']['J'],'J'),
+          'expJ' : mat_ccode(value['jordan']['expJ'],'expJ'),
+        },
+        'int' : {
+          'vec' : mat_ccode(value['int']['vec'], 'vec'),
+        },
+      }
+    else :
+      ccode[key] = mat_ccode(value, key)
+
+  print symbols, ccode
+  return symbols, ccode
 
 def generate_matrix(mA, mB) :
   r = sympy.symbols('r')
@@ -330,7 +367,8 @@ def generate_cost_function(A, xf, B, R, xbar, solve_gramian_inv=True) :
     c = 't + (xf-xbar).transpose() * ginv * (xf-xbar)'
     # print c
     print 'computing the derivative of the cost function...'
-    dc = sympy.Matrix([1])- t1 - t2
+    dc = '1+2*(A*xf+c).transpose()*d-d.transpose()*B*R.inverse()*B.transpose()*d'
+    d = d_sym
     # print dc
   return t1, t2, c, dc, d, G
 
