@@ -54,34 +54,38 @@
     {
       Eigen::Matrix<Scalar,SYS_N,SYS_N> operator()(Scalar t) const
       {
-        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ, P, P_inv;
+        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ;
 				auto &state = x_hat;
         auto &x1_hat = state(0); auto &x2_hat = state(1); auto &x3_hat = state(2); auto &x4_hat = state(3); auto &x5_hat = state(4); 
-P << -x3_hat*x4_hat*sin(x2_hat), cos(x2_hat), 0, -x3_hat*cos(x2_hat)/x4_hat, 0, x3_hat*x4_hat*cos(x2_hat), sin(x2_hat), 0, -x3_hat*sin(x2_hat)/x4_hat, 0, 0, x4_hat, 0, 0, 0, 0, 0, 1, 0, -x3_hat/x4_hat, 0, 0, 0, 0, 1;
 expJ << 1, t, (1.0/2.0)*pow(t, 2), 0, 0, 0, 1, t, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, t, 0, 0, 0, 0, 1;
-P_inv = P.inverse();
-eAt = P*expJ*P_inv;
 
+        eAt = P*expJ*P_inv;
         return eAt;
       }
-			Eigen::Matrix<Scalar,SYS_N,SYS_N> operator()(const Eigen::Matrix<Scalar,SYS_N,1> &state, Scalar t) const
+			Eigen::Matrix<Scalar,SYS_N,SYS_N> operator()(const Eigen::Matrix<Scalar,SYS_N,1> &state, Scalar t)
       {
-        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ, P, P_inv;
+        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ;
         auto &x1_hat = state(0); auto &x2_hat = state(1); auto &x3_hat = state(2); auto &x4_hat = state(3); auto &x5_hat = state(4); 
-P << -x3_hat*x4_hat*sin(x2_hat), cos(x2_hat), 0, -x3_hat*cos(x2_hat)/x4_hat, 0, x3_hat*x4_hat*cos(x2_hat), sin(x2_hat), 0, -x3_hat*sin(x2_hat)/x4_hat, 0, 0, x4_hat, 0, 0, 0, 0, 0, 1, 0, -x3_hat/x4_hat, 0, 0, 0, 0, 1;
 expJ << 1, t, (1.0/2.0)*pow(t, 2), 0, 0, 0, 1, t, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, t, 0, 0, 0, 0, 1;
-P_inv = P.inverse();
-eAt = P*expJ*P_inv;
 
+        P << -x3_hat*x4_hat*sin(x2_hat), cos(x2_hat), 0, -x3_hat*cos(x2_hat)/x4_hat, 0, x3_hat*x4_hat*cos(x2_hat), sin(x2_hat), 0, -x3_hat*sin(x2_hat)/x4_hat, 0, 0, x4_hat, 0, 0, 0, 0, 0, 1, 0, -x3_hat/x4_hat, 0, 0, 0, 0, 1;
+P_inv = P.inverse();
+
+        eAt = P*expJ*P_inv;
         return eAt;
       }
       void linearize(const Eigen::Matrix<Scalar,SYS_N,1> &state)
       {
         x_hat = state;
+        auto &x1_hat = state(0); auto &x2_hat = state(1); auto &x3_hat = state(2); auto &x4_hat = state(3); auto &x5_hat = state(4); 
+        P << -x3_hat*x4_hat*sin(x2_hat), cos(x2_hat), 0, -x3_hat*cos(x2_hat)/x4_hat, 0, x3_hat*x4_hat*cos(x2_hat), sin(x2_hat), 0, -x3_hat*sin(x2_hat)/x4_hat, 0, 0, x4_hat, 0, 0, 0, 0, 0, 1, 0, -x3_hat/x4_hat, 0, 0, 0, 0, 1;
+P_inv = P.inverse();
+
       }
       Scalar r = Models::r;
       /* linearization state */
       Eigen::Matrix<Scalar,SYS_N,1> x_hat;
+      Eigen::Matrix<Scalar,SYS_N,SYS_N> P, P_inv;
     };
 
     /* unresolved, use jordan form instead
@@ -258,22 +262,25 @@ c << x2_hat*x3_hat*sin(x2_hat), -x2_hat*x3_hat*cos(x2_hat), -x3_hat*x4_hat, 0, 0
     {
       Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> operator()(Scalar t) const
       {
-        Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> eAt, expJ, P, P_inv;
+        Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> eAt, expJ;
         auto &x1_hat = state(0); auto &x2_hat = state(1); auto &x3_hat = state(2); auto &x4_hat = state(3); auto &x5_hat = state(4); 
-P << x3_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat), 0, -pow(cos(x2_hat), 2)/r, 0, 0, 0, -x4_hat*cos(x2_hat)/r + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)*cos(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*pow(cos(x2_hat), 2)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, x3_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat), -x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r, -sin(x2_hat)*cos(x2_hat)/r, 0, 0, 0, -x4_hat*sin(x2_hat)/r + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*pow(sin(x2_hat), 2)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)*cos(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, 0, x3_hat*(-pow(x3_hat, 2)/r - pow(x4_hat, 2)/r)*sin(x2_hat), -x4_hat*cos(x2_hat)/r, 0, 0, 0, -pow(x3_hat, 2)/r - pow(x4_hat, 2)/r + x4_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + x4_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*cos(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, 0, 0, -x3_hat*x4_hat*sin(x2_hat)/r, -cos(x2_hat)/r, 0, 0, -x3_hat*x4_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + x3_hat*x4_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), -x4_hat/r + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*cos(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, 0, -pow(x3_hat, 2)*sin(x2_hat)/r, 0, 0, 0, -pow(x3_hat, 2)*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + pow(x3_hat, 2)*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), -x3_hat/r, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, -(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 0, 0, 0, 0, 0, 0, 0, 0, 0, -(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 0, 0, 0, 0, x3_hat*sin(x2_hat), 0, 0, 0, x3_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) - x3_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 1, 0, 0, 0, -x3_hat*x4_hat*sin(x2_hat), -cos(x2_hat), 0, 0, -x3_hat*x4_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) + x3_hat*x4_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), -x4_hat + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*cos(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 0, 0, 0, 0, -pow(x3_hat, 2)*sin(x2_hat), 0, 0, 0, -pow(x3_hat, 2)*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) + pow(x3_hat, 2)*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), -x3_hat, 0;
 expJ << 1, t, (1.0/2.0)*pow(t, 2), (1.0/6.0)*pow(t, 3), (1.0/24.0)*pow(t, 4), (1.0/120.0)*pow(t, 5), 0, 0, 0, 0, 0, 1, t, (1.0/2.0)*pow(t, 2), (1.0/6.0)*pow(t, 3), (1.0/24.0)*pow(t, 4), 0, 0, 0, 0, 0, 0, 1, t, (1.0/2.0)*pow(t, 2), (1.0/6.0)*pow(t, 3), 0, 0, 0, 0, 0, 0, 0, 1, t, (1.0/2.0)*pow(t, 2), 0, 0, 0, 0, 0, 0, 0, 0, 1, t, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, t, (1.0/2.0)*pow(t, 2), (1.0/6.0)*pow(t, 3), 0, 0, 0, 0, 0, 0, 0, 1, t, (1.0/2.0)*pow(t, 2), 0, 0, 0, 0, 0, 0, 0, 0, 1, t, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
-P_inv = P.inverse();
-eAt = P*expJ*P_inv;
 
+        eAt = P*expJ*P_inv;
         return eAt;
       }
       void linearize(const Eigen::Matrix<Scalar,SYS_N,1> &state)
       {
         this->state = state;
+        auto &x1_hat = state(0); auto &x2_hat = state(1); auto &x3_hat = state(2); auto &x4_hat = state(3); auto &x5_hat = state(4); 
+        P << x3_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat), 0, -pow(cos(x2_hat), 2)/r, 0, 0, 0, -x4_hat*cos(x2_hat)/r + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)*cos(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*pow(cos(x2_hat), 2)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, x3_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat), -x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r, -sin(x2_hat)*cos(x2_hat)/r, 0, 0, 0, -x4_hat*sin(x2_hat)/r + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*pow(sin(x2_hat), 2)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)*cos(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, 0, x3_hat*(-pow(x3_hat, 2)/r - pow(x4_hat, 2)/r)*sin(x2_hat), -x4_hat*cos(x2_hat)/r, 0, 0, 0, -pow(x3_hat, 2)/r - pow(x4_hat, 2)/r + x4_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + x4_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*cos(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, 0, 0, -x3_hat*x4_hat*sin(x2_hat)/r, -cos(x2_hat)/r, 0, 0, -x3_hat*x4_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + x3_hat*x4_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), -x4_hat/r + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*cos(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), 0, 0, 0, 0, -pow(x3_hat, 2)*sin(x2_hat)/r, 0, 0, 0, -pow(x3_hat, 2)*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(r*(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)) + pow(x3_hat, 2)*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(r*(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r)), -x3_hat/r, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, -(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 0, 0, 0, 0, 0, 0, 0, 0, 0, -(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 0, 0, 0, 0, x3_hat*sin(x2_hat), 0, 0, 0, x3_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) - x3_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 1, 0, 0, 0, -x3_hat*x4_hat*sin(x2_hat), -cos(x2_hat), 0, 0, -x3_hat*x4_hat*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) + x3_hat*x4_hat*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), -x4_hat + (pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*sin(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) + (-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*cos(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), 0, 0, 0, 0, -pow(x3_hat, 2)*sin(x2_hat), 0, 0, 0, -pow(x3_hat, 2)*(pow(x3_hat, 3)*sin(x2_hat)/r + x3_hat*pow(x4_hat, 2)*sin(x2_hat)/r)*cos(x2_hat)/(x3_hat*x4_hat*pow(sin(x2_hat), 2)/r + x3_hat*x4_hat*pow(cos(x2_hat), 2)/r) + pow(x3_hat, 2)*(-pow(x3_hat, 3)*cos(x2_hat)/r - x3_hat*pow(x4_hat, 2)*cos(x2_hat)/r)*sin(x2_hat)/(-x3_hat*x4_hat*pow(sin(x2_hat), 2)/r - x3_hat*x4_hat*pow(cos(x2_hat), 2)/r), -x3_hat, 0;
+P_inv = P.inverse();
+
       }
       Scalar r = Models::r;
       /* linearization state */
       Eigen::Matrix<Scalar,SYS_N,1> state;
+      Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> P, P_inv;
     };
 
     /*

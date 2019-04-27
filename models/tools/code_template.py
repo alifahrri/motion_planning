@@ -16,25 +16,28 @@ def generate_nonlinear_cpp(model_name,
     linearization_variables,
     P, J, 'P_inv = P.inverse();'
   )
-  expm_jordan_expr = '{}\n{}\n{}\n{}\n{}\n'.format(
+  expm_jordan_expr = '{}\n{}\n'.format(
     linearization_variables,
-    P, expJ, 'P_inv = P.inverse();',
-    'eAt = P*expJ*P_inv;'
+    expJ
+  )
+  ppinv_jordan_expr = '{}\n{}\n'.format(
+    P, 'P_inv = P.inverse();'
   )
   constant_expr = '{}\n{}\n'.format(
     linearization_variables,
     c
   )
-  cmp_jordan_expr = '{}\n{}'.format(
+  cmp_jordan_expr = '{}\n{}\n'.format(
     solution['jordan']['P'],
     solution['jordan']['J'],
   )
-  expm_cmp_jordan_expr = '{}\n{}\n{}\n{}\n{}\n'.format(
+  expm_cmp_jordan_expr = '{}\n{}\n'.format(
     linearization_variables,
-    solution['jordan']['P'], 
     solution['jordan']['expJ'], 
+  )
+  ppinv_cmp_jordan_expr = '{}\n{}\n'.format(
+    solution['jordan']['P'],
     'P_inv = P.inverse();',
-    'eAt = P*expJ*P_inv;'
   )
   code_str = str(
     '''
@@ -93,24 +96,30 @@ def generate_nonlinear_cpp(model_name,
     {{
       Eigen::Matrix<Scalar,SYS_N,SYS_N> operator()(Scalar t) const
       {{
-        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ, P, P_inv;
+        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ;
 				auto &state = x_hat;
         {7}
+        eAt = P*expJ*P_inv;
         return eAt;
       }}
-			Eigen::Matrix<Scalar,SYS_N,SYS_N> operator()(const Eigen::Matrix<Scalar,SYS_N,1> &state, Scalar t) const
+			Eigen::Matrix<Scalar,SYS_N,SYS_N> operator()(const Eigen::Matrix<Scalar,SYS_N,1> &state, Scalar t)
       {{
-        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ, P, P_inv;
+        Eigen::Matrix<Scalar,SYS_N,SYS_N> eAt, expJ;
         {7}
+        {13}
+        eAt = P*expJ*P_inv;
         return eAt;
       }}
       void linearize(const Eigen::Matrix<Scalar,SYS_N,1> &state)
       {{
         x_hat = state;
+        {12}
+        {13}
       }}
       Scalar r = Models::r;
       /* linearization state */
       Eigen::Matrix<Scalar,SYS_N,1> x_hat;
+      Eigen::Matrix<Scalar,SYS_N,SYS_N> P, P_inv;
     }};
 
     /* unresolved, use jordan form instead
@@ -279,17 +288,21 @@ def generate_nonlinear_cpp(model_name,
     {{
       Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> operator()(Scalar t) const
       {{
-        Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> eAt, expJ, P, P_inv;
+        Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> eAt, expJ;
         {11}
+        eAt = P*expJ*P_inv;
         return eAt;
       }}
       void linearize(const Eigen::Matrix<Scalar,SYS_N,1> &state)
       {{
         this->state = state;
+        {12}
+        {14}
       }}
       Scalar r = Models::r;
       /* linearization state */
       Eigen::Matrix<Scalar,SYS_N,1> state;
+      Eigen::Matrix<Scalar,2*SYS_N,2*SYS_N> P, P_inv;
     }};
 
     /*
@@ -369,6 +382,8 @@ def generate_nonlinear_cpp(model_name,
     gramian,              #10
     expm_cmp_jordan_expr, #11
 		linearization_variables, #12
+    ppinv_jordan_expr,    #13
+    ppinv_cmp_jordan_expr,#14
     '', '',
     '', '', '', '', '', '',
     '', '', '', '',
@@ -378,6 +393,10 @@ def generate_nonlinear_cpp(model_name,
 
 def generate_nonlinear_test_cpp(model_name, dim) :
   print 'generating test code for model : ', model_name, '...'
+  test_linearization_state = 'Eigen::Matrix<double,{0},1> state; \nstate << {1};'.format(
+    dim,
+    ','.join(['1']*5)
+  )
   test_code = str(
     '''
     #include <gtest/gtest.h>
@@ -398,6 +417,9 @@ def generate_nonlinear_test_cpp(model_name, dim) :
 			{0}ClosedExpm {1}_exp;
 			auto ok = true;
 			std::stringstream ss;
+      /* linearization */
+      {6}
+      {1}_exp.linearize(state);
 			for(size_t i=0; i<10; i++) {{
 				auto t = i*0.5;
 				auto m = {1}_exp(t);
@@ -418,6 +440,9 @@ def generate_nonlinear_test_cpp(model_name, dim) :
       auto &{1}_ss = {1}.state_space;
       auto ok = true;
       std::stringstream ss;
+      /* linearization */
+      {6}
+      {1}_ss.linearize(state);
       for(size_t i=0; i<10; i++) {{
         auto t = i*0.5;
         auto m = {1}_ss.expm(t);
@@ -433,18 +458,43 @@ def generate_nonlinear_test_cpp(model_name, dim) :
       EXPECT_TRUE(ok) << ss.str();
     }}
 
+    TEST({0}CmpClosedExpm, exp_no_inf_nan) {{
+			{0}CmpClosedExpm {1}_exp;
+			auto ok = true;
+			std::stringstream ss;
+      /* linearization */
+      {6}
+      {1}_exp.linearize(state);
+			for(size_t i=0; i<10; i++) {{
+				auto t = i*0.5;
+				auto m = {1}_exp(t);
+				ss << "t(" << t << ") : [";
+				for(size_t j=0; j<{5}; j++) {{
+					for(size_t k=0; k<{5}; k++) {{
+						ss << m(j,k) << (k!=({4}-1) ? " " : "; ");
+						if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+					}}
+				}}
+				ss << "] " << std::endl;
+			}}
+			EXPECT_TRUE(ok) << ss.str();
+	  }}
+
     TEST({0}SSComposite, exp_no_inf_nan) {{
       Models::{0} {1};
       auto &{1}_ss = {1}.composite_ss;
       auto ok = true;
       std::stringstream ss;
+      /* linearization */
+      {6}
+      {1}_ss.linearize(state);
       for(size_t i=0; i<10; i++) {{
         auto t = i*0.5;
         auto m = {1}_ss.expm(t);
         ss << "t(" << t << ") : [";
-        for(size_t j=0; j<{4}; j++) {{
-          for(size_t k=0; k<{4}; k++) {{
-            ss << m(j,k) << (k!=({4}-1) ? " " : "; ");
+        for(size_t j=0; j<{5}; j++) {{
+          for(size_t k=0; k<{5}; k++) {{
+            ss << m(j,k) << (k!=({5}-1) ? " " : "; ");
             if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
           }}
         }}
@@ -458,7 +508,8 @@ def generate_nonlinear_test_cpp(model_name, dim) :
       ', '.join(['1.0' for i in range(dim)]),
       ', '.join(['0.0' for i in range(dim)]),
       dim,
-      dim*2
+      dim*2,
+      test_linearization_state
     )
   )
   print 'generating test code for model : ', model_name, '...OK'
