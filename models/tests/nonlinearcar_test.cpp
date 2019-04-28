@@ -13,6 +13,57 @@
     typedef Models::NonlinearCarSSComposite::StateType NonlinearCarSSCompositeState;
     typedef Models::NonlinearCarSSComposite::SystemMatrix NonlinearCarSSCompositeSystem;
 
+    TEST(NonlinearCarTimeSolver, d_cost_near_zero) {
+      Models::NonlinearCar nonlinearcar;
+      auto &time_diff = nonlinearcar.opt_time_diff;
+      auto &time_solver = nonlinearcar.opt_time_solver;
+
+      /* initial state */
+      Eigen::Matrix<double,5,1> init_state; 
+init_state << 0,0,0,0,0;
+      /* final state */
+      Eigen::Matrix<double,5,1> state; 
+state << 1,1,1,1,1;
+      /* linearization */
+      nonlinearcar.linearize(state);
+
+      auto opt_time = time_solver.solve(init_state,state);
+      time_diff.set(init_state,state);
+      auto d_cost = time_diff(opt_time);
+      EXPECT_NEAR(d_cost, 0.0, 1e-4) << d_cost;
+    }
+
+    TEST(NonlinearCarGramian, gram_no_inf_nan) {
+      NonlinearCarGramian g;
+      auto ok = true;
+      std::stringstream ss;
+      /* linearization */
+      Eigen::Matrix<double,5,1> state; 
+state << 1,1,1,1,1;
+      g.linearize(state);
+      for(size_t i=1; i<30; i++) {
+        auto t = i*0.5;
+        auto m = g(t);
+        auto m_inv = m.inverse();
+        ss << "t(" << t << ") : [";
+        for(size_t j=0; j<5; j++) {
+          for(size_t k=0; k<5; k++) {
+            ss << m(j,k) << (k!=(5-1) ? " " : "; ");
+            if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+          }
+        }
+        ss << "]" << std::endl;
+        ss << "t(" << t << ") : inverse [";
+        for(size_t j=0; j<5; j++) {
+          for(size_t k=0; k<5; k++) {
+            ss << m_inv(j,k) << (k!=(5-1) ? " " : "; ");
+            if(isnan(m_inv(j,k)) || isinf(m_inv(j,k))) ok = false;
+          }
+        }
+        ss << "]" << std::endl;
+      }
+    }
+
     TEST(NonlinearCarClosedExpm, exp_no_inf_nan) {
 			NonlinearCarClosedExpm nonlinearcar_exp;
 			auto ok = true;

@@ -183,40 +183,28 @@ c << x2_hat*x3_hat*sin(x2_hat), -x2_hat*x3_hat*cos(x2_hat), -x3_hat*x4_hat, 0, 0
 
     // NonlinearCarCost nonlinearcar_cost;
 
-    struct NonlinearCarOptTimeDiff
+    /* evaluate mat operation term of xbar integration */
+    struct NonlinearCarIntegratorEval
     {
-      template <typename GramianFn>
-      auto operator()(const NonlinearCarSS &system, const NonlinearCarSS::StateType &xi, const NonlinearCarSS::StateType &xf, const NonlinearCarSS::StateType &c, const Scalar &t, GramianFn &g) const
-        -> decltype(system.expm(t), g(t).inverse())
+      NonlinearCarIntegratorEval(const NonlinearCarSS &sys, const NonlinearCarSS::StateType &c)
+        : sys(sys), c(c)
+      {}
+      template <size_t i>
+      Scalar eval(Scalar t0, Scalar t1)
       {
-				const auto& sys = system;
+        NonlinearCarSS::StateType result;
         auto f = [&](Scalar t) {
-          return sys.expm(t)*c;
+          return (sys.expm(t)*c)[i];
         };
         constexpr int max_depth = 100;
         constexpr Scalar e = Scalar(1e-3);
         using integration_t = decltype(f);
         SimpsonsRuleIntegrator<Scalar,integration_t,max_depth> integrator(f,e);
-        auto xbar = exp(t)*xi + integrator(0,t);
-        auto d = g(t).inverse()*(xf-xbar);
-        /* todo : execute around pointer instead of dereferencing */
-        return (*this)(system, xbar, xf, d, c, g(t).inverse());
+        return integrator(t0,t1);
       }
-			template <typename RMat>
-      auto operator()(const NonlinearCarSS &system, const NonlinearCarSS::StateType &xbar, const NonlinearCarSS::StateType &xf, const NonlinearCarSS::StateType &d, const NonlinearCarSS::StateType &c, const NonlinearCarSS::SystemMatrix &ginv,  const RMat &R) const
-        -> decltype(R.inverse(), 1+2*(system.A*xf+c).transpose()*d-d.transpose()*system.B*R.inverse()*system.B.transpose()*d)
-      {
-        const auto& A = system.A;
-        const auto& B = system.B;
-        Scalar d_cost;
-        d_cost = 1+2*(A*xf+c).transpose()*d-d.transpose()*B*R.inverse()*B.transpose()*d;
-        return d_cost;
-      }
-
-      Scalar r = Models::r;
+      const NonlinearCarSS &sys;
+      const NonlinearCarSS::StateType &c;
     };
-
-    // NonlinearCarOptTimeDiff nonlinearcar_opt_time_diff;
 
     struct NonlinearCarGramian
     {
@@ -242,6 +230,53 @@ c << x2_hat*x3_hat*sin(x2_hat), -x2_hat*x3_hat*cos(x2_hat), -x3_hat*x4_hat, 0, 0
 			NonlinearCarSS::StateType state;
       Scalar r = Models::r;
     };
+
+    /* TODO : rename to cost diff or cost derivative to avoid confusion */
+    struct NonlinearCarOptTimeDiff
+    {
+      NonlinearCarOptTimeDiff(const NonlinearCarSS &system, const NonlinearCarLinearizationConstant &cconstant, const NonlinearCarGramian &gramian)
+        : system(system), cconstant(cconstant), g(gramian)
+      {}
+      auto set(const NonlinearCarSS::StateType &xi, const NonlinearCarSS::StateType &xf)
+      {
+        this->xi = xi;
+        this->xf = xf;
+      }
+      Scalar operator()(const Scalar t) const
+      {
+				using cconst_t = decltype(cconstant());
+        using d_vect_t = decltype(xf);
+				const auto& sys = system;
+        cconst_t c = cconstant();
+        NonlinearCarIntegratorEval integrator(sys, c);
+        NonlinearCarSS::StateType integration_term;
+        /* integrate each element of the integration term */
+        integration_term << integrator.eval<0>(0,t),integrator.eval<1>(0,t),integrator.eval<2>(0,t),integrator.eval<3>(0,t),integrator.eval<4>(0,t);
+
+        auto xbar = sys.expm(t)*xi + integration_term;
+        d_vect_t d = g(t).inverse()*(xf-xbar);
+        /* todo : execute around pointer instead of dereferencing */
+        return (*this)(xf, d, c, g(t).inverse());
+      }
+			Scalar operator()(const NonlinearCarSS::StateType &xf, const NonlinearCarSS::StateType &d, const NonlinearCarSS::StateType &c, const NonlinearCarSS::SystemMatrix &ginv) const
+      {
+        Eigen::Matrix<Scalar,SYS_P,SYS_P> R;
+        R = decltype(R)::Identity() * r;
+        const auto& A = system.A;
+        const auto& B = system.B;
+        Scalar d_cost;
+        d_cost = 1+2*(A*xf+c).transpose()*d-d.transpose()*B*R.inverse()*B.transpose()*d;
+        return d_cost;
+      }
+
+      Scalar r = Models::r;
+      NonlinearCarSS::StateType xi, xf;
+      const NonlinearCarSS &system;
+      const NonlinearCarLinearizationConstant &cconstant;
+      const NonlinearCarGramian &g;
+    };
+
+    // NonlinearCarOptTimeDiff nonlinearcar_opt_time_diff;
 
     // NonlinearCarGramian nonlinearcar_gram;
 
@@ -302,10 +337,10 @@ P_inv = P.inverse();
     typedef StateSpace<Scalar,2*SYS_N,SYS_P,SYS_Q,NonlinearCarCmpClosedExpm> NonlinearCarSSComposite;
     */
     typedef StateSpace<Scalar,2*SYS_N,SYS_P,SYS_Q,NonlinearCarCmpJordanFormExpm> NonlinearCarSSComposite;
+    typedef OptimalTimeFinder<NonlinearCarOptTimeDiff> NonlinearCarOptTimeSolver;
 
     /* TODO : fix
     typedef FixedTimeLQR<NonlinearCarSS,NonlinearCarGramian> NonlinearCarFixTimeLQR;
-    typedef OptimalTimeFinder<NonlinearCarOptTimeDiff> NonlinearCarOptTimeSolver;
     typedef OptTrjSolver<NonlinearCarCost,NonlinearCarOptTimeSolver,NonlinearCarFixTimeLQR,NonlinearCarSS,NonlinearCarGramian,NonlinearCarSSComposite> NonlinearCarTrajectorySolver;
     */
 
@@ -320,15 +355,18 @@ P_inv = P.inverse();
       typedef NonlinearCarSS::StateType Input;
 
       NonlinearCar()
+        : opt_time_diff(state_space, cconstant, gramian)
+        , opt_time_solver(opt_time_diff)
       { }
 
       NonlinearCarSS state_space;
       NonlinearCarCost cost;
       NonlinearCarGramian gramian;
       NonlinearCarSSComposite composite_ss;
+      NonlinearCarLinearizationConstant cconstant;
       NonlinearCarOptTimeDiff opt_time_diff;
+      NonlinearCarOptTimeSolver opt_time_solver;
       // NonlinearCarFixTimeLQR ft_lqr = NonlinearCarFixTimeLQR(state_space, state_space, gramian);
-      // NonlinearCarOptTimeSolver opt_time_solver = NonlinearCarOptTimeSolver(opt_time_diff);
       // NonlinearCarTrajectorySolver solver = NonlinearCarTrajectorySolver(cost, opt_time_solver, ft_lqr, state_space, gramian, composite_ss);
 
       void set_weight(Scalar r) {
@@ -339,6 +377,13 @@ P_inv = P.inverse();
         // ft_lqr.R = RMat::Identity()*r;
         state_space.exp_fn.r = r;
         composite_ss.exp_fn.r = r;
+      }
+
+      void linearize(const State &state) {
+        state_space.linearize(state);
+        gramian.linearize(state);
+        composite_ss.linearize(state);
+        cconstant.linearize(state);
       }
     };
 

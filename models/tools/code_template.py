@@ -39,6 +39,10 @@ def generate_nonlinear_cpp(model_name,
     solution['jordan']['P'],
     'P_inv = P.inverse();',
   )
+  # integration term for the derivative of the cost
+  integration_term_expr = '{};\n'.format(
+    'integration_term << ' + ','.join(['integrator.eval<{}>(0,t)'.format(i) for i in range(dim)])
+  )
   code_str = str(
     '''
     // Warning : this code is generated automatically, any changes might be overwritten
@@ -209,40 +213,28 @@ def generate_nonlinear_cpp(model_name,
 
     // {0}Cost {1}_cost;
 
-    struct {0}OptTimeDiff
+    /* evaluate mat operation term of xbar integration */
+    struct {0}IntegratorEval
     {{
-      template <typename GramianFn>
-      auto operator()(const {0}SS &system, const {0}SS::StateType &xi, const {0}SS::StateType &xf, const {0}SS::StateType &c, const Scalar &t, GramianFn &g) const
-        -> decltype(system.expm(t), g(t).inverse())
+      {0}IntegratorEval(const {0}SS &sys, const {0}SS::StateType &c)
+        : sys(sys), c(c)
+      {{}}
+      template <size_t i>
+      Scalar eval(Scalar t0, Scalar t1)
       {{
-				const auto& sys = system;
+        {0}SS::StateType result;
         auto f = [&](Scalar t) {{
-          return sys.expm(t)*c;
+          return (sys.expm(t)*c)[i];
         }};
         constexpr int max_depth = 100;
         constexpr Scalar e = Scalar(1e-3);
         using integration_t = decltype(f);
         SimpsonsRuleIntegrator<Scalar,integration_t,max_depth> integrator(f,e);
-        auto xbar = exp(t)*xi + integrator(0,t);
-        auto d = g(t).inverse()*(xf-xbar);
-        /* todo : execute around pointer instead of dereferencing */
-        return (*this)(system, xbar, xf, d, c, g(t).inverse());
+        return integrator(t0,t1);
       }}
-			template <typename RMat>
-      auto operator()(const {0}SS &system, const {0}SS::StateType &xbar, const {0}SS::StateType &xf, const {0}SS::StateType &d, const {0}SS::StateType &c, const {0}SS::SystemMatrix &ginv,  const RMat &R) const
-        -> decltype(R.inverse(), 1+2*(system.A*xf+c).transpose()*d-d.transpose()*system.B*R.inverse()*system.B.transpose()*d)
-      {{
-        const auto& A = system.A;
-        const auto& B = system.B;
-        Scalar d_cost;
-        d_cost = 1+2*(A*xf+c).transpose()*d-d.transpose()*B*R.inverse()*B.transpose()*d;
-        return d_cost;
-      }}
-
-      Scalar r = Models::r;
+      const {0}SS &sys;
+      const {0}SS::StateType &c;
     }};
-
-    // {0}OptTimeDiff {1}_opt_time_diff;
 
     struct {0}Gramian
     {{
@@ -268,6 +260,52 @@ def generate_nonlinear_cpp(model_name,
 			{0}SS::StateType state;
       Scalar r = Models::r;
     }};
+
+    /* TODO : rename to cost diff or cost derivative to avoid confusion */
+    struct {0}OptTimeDiff
+    {{
+      {0}OptTimeDiff(const {0}SS &system, const {0}LinearizationConstant &cconstant, const {0}Gramian &gramian)
+        : system(system), cconstant(cconstant), g(gramian)
+      {{}}
+      auto set(const {0}SS::StateType &xi, const {0}SS::StateType &xf)
+      {{
+        this->xi = xi;
+        this->xf = xf;
+      }}
+      Scalar operator()(const Scalar t) const
+      {{
+				using cconst_t = decltype(cconstant());
+        using d_vect_t = decltype(xf);
+				const auto& sys = system;
+        cconst_t c = cconstant();
+        {0}IntegratorEval integrator(sys, c);
+        {0}SS::StateType integration_term;
+        /* integrate each element of the integration term */
+        {15}
+        auto xbar = sys.expm(t)*xi + integration_term;
+        d_vect_t d = g(t).inverse()*(xf-xbar);
+        /* todo : execute around pointer instead of dereferencing */
+        return (*this)(xf, d, c, g(t).inverse());
+      }}
+			Scalar operator()(const {0}SS::StateType &xf, const {0}SS::StateType &d, const {0}SS::StateType &c, const {0}SS::SystemMatrix &ginv) const
+      {{
+        Eigen::Matrix<Scalar,SYS_P,SYS_P> R;
+        R = decltype(R)::Identity() * r;
+        const auto& A = system.A;
+        const auto& B = system.B;
+        Scalar d_cost;
+        d_cost = 1+2*(A*xf+c).transpose()*d-d.transpose()*B*R.inverse()*B.transpose()*d;
+        return d_cost;
+      }}
+
+      Scalar r = Models::r;
+      {0}SS::StateType xi, xf;
+      const {0}SS &system;
+      const {0}LinearizationConstant &cconstant;
+      const {0}Gramian &g;
+    }};
+
+    // {0}OptTimeDiff {1}_opt_time_diff;
 
     // {0}Gramian {1}_gram;
 
@@ -324,10 +362,10 @@ def generate_nonlinear_cpp(model_name,
     typedef StateSpace<Scalar,2*SYS_N,SYS_P,SYS_Q,{0}CmpClosedExpm> {0}SSComposite;
     */
     typedef StateSpace<Scalar,2*SYS_N,SYS_P,SYS_Q,{0}CmpJordanFormExpm> {0}SSComposite;
+    typedef OptimalTimeFinder<{0}OptTimeDiff> {0}OptTimeSolver;
 
     /* TODO : fix
     typedef FixedTimeLQR<{0}SS,{0}Gramian> {0}FixTimeLQR;
-    typedef OptimalTimeFinder<{0}OptTimeDiff> {0}OptTimeSolver;
     typedef OptTrjSolver<{0}Cost,{0}OptTimeSolver,{0}FixTimeLQR,{0}SS,{0}Gramian,{0}SSComposite> {0}TrajectorySolver;
     */
 
@@ -342,15 +380,18 @@ def generate_nonlinear_cpp(model_name,
       typedef {0}SS::StateType Input;
 
       {0}()
+        : opt_time_diff(state_space, cconstant, gramian)
+        , opt_time_solver(opt_time_diff)
       {{ }}
 
       {0}SS state_space;
       {0}Cost cost;
       {0}Gramian gramian;
       {0}SSComposite composite_ss;
+      {0}LinearizationConstant cconstant;
       {0}OptTimeDiff opt_time_diff;
+      {0}OptTimeSolver opt_time_solver;
       // {0}FixTimeLQR ft_lqr = {0}FixTimeLQR(state_space, state_space, gramian);
-      // {0}OptTimeSolver opt_time_solver = {0}OptTimeSolver(opt_time_diff);
       // {0}TrajectorySolver solver = {0}TrajectorySolver(cost, opt_time_solver, ft_lqr, state_space, gramian, composite_ss);
 
       void set_weight(Scalar r) {{
@@ -361,6 +402,13 @@ def generate_nonlinear_cpp(model_name,
         // ft_lqr.R = RMat::Identity()*r;
         state_space.exp_fn.r = r;
         composite_ss.exp_fn.r = r;
+      }}
+
+      void linearize(const State &state) {{
+        state_space.linearize(state);
+        gramian.linearize(state);
+        composite_ss.linearize(state);
+        cconstant.linearize(state);
       }}
     }};
 
@@ -384,6 +432,7 @@ def generate_nonlinear_cpp(model_name,
 		linearization_variables, #12
     ppinv_jordan_expr,    #13
     ppinv_cmp_jordan_expr,#14
+    integration_term_expr,#15
     '', '',
     '', '', '', '', '', '',
     '', '', '', '',
@@ -396,6 +445,10 @@ def generate_nonlinear_test_cpp(model_name, dim) :
   test_linearization_state = 'Eigen::Matrix<double,{0},1> state; \nstate << {1};'.format(
     dim,
     ','.join(['1']*5)
+  )
+  test_initial_state = 'Eigen::Matrix<double,{0},1> init_state; \ninit_state << {1};'.format(
+    dim,
+    ','.join(['0']*5)
   )
   test_code = str(
     '''
@@ -412,6 +465,54 @@ def generate_nonlinear_test_cpp(model_name, dim) :
     typedef Models::{0}CmpJordanFormExpm {0}CmpClosedExpm;
     typedef Models::{0}SSComposite::StateType {0}SSCompositeState;
     typedef Models::{0}SSComposite::SystemMatrix {0}SSCompositeSystem;
+
+    TEST({0}TimeSolver, d_cost_near_zero) {{
+      Models::{0} {1};
+      auto &time_diff = {1}.opt_time_diff;
+      auto &time_solver = {1}.opt_time_solver;
+
+      /* initial state */
+      {7}
+      /* final state */
+      {6}
+      /* linearization */
+      {1}.linearize(state);
+
+      auto opt_time = time_solver.solve(init_state,state);
+      time_diff.set(init_state,state);
+      auto d_cost = time_diff(opt_time);
+      EXPECT_NEAR(d_cost, 0.0, 1e-4) << d_cost;
+    }}
+
+    TEST({0}Gramian, gram_no_inf_nan) {{
+      {0}Gramian g;
+      auto ok = true;
+      std::stringstream ss;
+      /* linearization */
+      {6}
+      g.linearize(state);
+      for(size_t i=1; i<30; i++) {{
+        auto t = i*0.5;
+        auto m = g(t);
+        auto m_inv = m.inverse();
+        ss << "t(" << t << ") : [";
+        for(size_t j=0; j<{4}; j++) {{
+          for(size_t k=0; k<{4}; k++) {{
+            ss << m(j,k) << (k!=({4}-1) ? " " : "; ");
+            if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+          }}
+        }}
+        ss << "]" << std::endl;
+        ss << "t(" << t << ") : inverse [";
+        for(size_t j=0; j<{4}; j++) {{
+          for(size_t k=0; k<{4}; k++) {{
+            ss << m_inv(j,k) << (k!=({4}-1) ? " " : "; ");
+            if(isnan(m_inv(j,k)) || isinf(m_inv(j,k))) ok = false;
+          }}
+        }}
+        ss << "]" << std::endl;
+      }}
+    }}
 
     TEST({0}ClosedExpm, exp_no_inf_nan) {{
 			{0}ClosedExpm {1}_exp;
@@ -509,7 +610,8 @@ def generate_nonlinear_test_cpp(model_name, dim) :
       ', '.join(['0.0' for i in range(dim)]),
       dim,
       dim*2,
-      test_linearization_state
+      test_linearization_state,
+      test_initial_state
     )
   )
   print 'generating test code for model : ', model_name, '...OK'
