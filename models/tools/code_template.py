@@ -180,37 +180,6 @@ def generate_nonlinear_cpp(model_name,
       Eigen::Matrix<Scalar,SYS_N,1> c;
     }};
 
-    struct {0}Cost
-    {{
-      template <typename GramianFn>
-      auto operator()(const {0}SS &system, const {0}SS::StateType &xi, const {0}SS::StateType &xf, const {0}SS::StateType &c, const Scalar &t, GramianFn &g) const
-        -> decltype(g(t).inverse(), Scalar())
-      {{
-				const auto& sys = system;
-        auto f = [&](Scalar t) {{
-          return sys.expm(t)*c;
-        }};
-        constexpr int max_depth = 100;
-        constexpr Scalar e = Scalar(1e-3);
-        using integration_t = decltype(f);
-        SimpsonsRuleIntegrator<Scalar,integration_t,max_depth> integrator(f,e);
-        auto xbar = exp(t)*xi + integrator(0,t);
-        /* todo : execute around pointer instead of dereferencing */
-        return (*this)(xbar, xf, t, g(t).inverse());
-      }}
-      auto operator()(const {0}SS::StateType &xbar, const {0}SS::StateType &xf, const Scalar &t, const {0}SS::SystemMatrix &ginv) const
-        -> decltype(t+(xf-xbar).transpose()*ginv*(xf-xbar))
-      {{
-        Scalar cost;
-        cost = t+(xf-xbar).transpose()*ginv*(xf-xbar);
-        return cost;
-      }}
-      /* input weighting factor */
-      Scalar r = Models::r;
-      /* a pointer to gramian, the implementation should set the appropriate address befor call the functor */
-      // std::shared_ptr<{0}Gramian> g;
-    }};
-
     // {0}Cost {1}_cost;
 
     /* evaluate mat operation term of xbar integration */
@@ -259,6 +228,37 @@ def generate_nonlinear_cpp(model_name,
       }}
 			{0}SS::StateType state;
       Scalar r = Models::r;
+    }};
+
+    struct {0}Cost
+    {{
+      {0}Cost(const {0}SS &system, const {0}LinearizationConstant &cconstant, const {0}Gramian &gramian)
+        : system(system), cconstant(cconstant), g(gramian)
+      {{}}
+      Scalar operator()(const {0}SS::StateType &xi, const {0}SS::StateType &xf, Scalar t) const
+      {{
+        Scalar cost;
+        using cconst_t = decltype(cconstant());
+        using d_vect_t = decltype(xf);
+        const auto &sys = system;
+        cconst_t c = cconstant();
+        {0}IntegratorEval integrator(sys, c);
+        {0}SS::StateType integration_term;
+        /* TODO : optimize integration term computation */
+        /* integrate each element of the integration term */
+        {15}
+        auto xbar = sys.expm(t)*xi + integration_term;
+        auto ginv = g(t).inverse();
+        cost = t+(xf-xbar).transpose()*ginv*(xf-xbar);
+        return cost;
+      }}
+      /* input weighting factor */
+      Scalar r = Models::r;
+      const {0}SS &system;
+      const {0}LinearizationConstant &cconstant;
+      const {0}Gramian &g;
+      /* a pointer to gramian, the implementation should set the appropriate address befor call the functor */
+      // std::shared_ptr<{0}Gramian> g;
     }};
 
     /* TODO : rename to cost diff or cost derivative to avoid confusion */
@@ -363,10 +363,10 @@ def generate_nonlinear_cpp(model_name,
     */
     typedef StateSpace<Scalar,2*SYS_N,SYS_P,SYS_Q,{0}CmpJordanFormExpm> {0}SSComposite;
     typedef OptimalTimeFinder<{0}OptTimeDiff> {0}OptTimeSolver;
-
-    /* TODO : fix
     typedef FixedTimeLQR<{0}SS,{0}Gramian> {0}FixTimeLQR;
     typedef OptTrjSolver<{0}Cost,{0}OptTimeSolver,{0}FixTimeLQR,{0}SS,{0}Gramian,{0}SSComposite> {0}TrajectorySolver;
+
+    /* TODO : fix
     */
 
     // {0}SSComposite {1}_ss_cmp;
@@ -380,26 +380,32 @@ def generate_nonlinear_cpp(model_name,
       typedef {0}SS::StateType Input;
 
       {0}()
+        /* initialize composite types */
         : opt_time_diff(state_space, cconstant, gramian)
+        , cost(state_space, cconstant, gramian)
         , opt_time_solver(opt_time_diff)
+        , ft_lqr(state_space, state_space, gramian)
+        , solver(cost, opt_time_solver, ft_lqr, state_space, gramian, composite_ss)
       {{ }}
 
+      /* fundamental types, need linearization */
       {0}SS state_space;
       {0}Cost cost;
       {0}Gramian gramian;
       {0}SSComposite composite_ss;
+      /* composite types, dependent to fundamental (or other composite) ones */
       {0}LinearizationConstant cconstant;
       {0}OptTimeDiff opt_time_diff;
       {0}OptTimeSolver opt_time_solver;
-      // {0}FixTimeLQR ft_lqr = {0}FixTimeLQR(state_space, state_space, gramian);
-      // {0}TrajectorySolver solver = {0}TrajectorySolver(cost, opt_time_solver, ft_lqr, state_space, gramian, composite_ss);
+      {0}FixTimeLQR ft_lqr;
+      {0}TrajectorySolver solver;
 
       void set_weight(Scalar r) {{
         cost.r = r;
         gramian.r = r;
         opt_time_diff.r = r;
-        // using RMat = decltype(ft_lqr.R);
-        // ft_lqr.R = RMat::Identity()*r;
+        using RMat = decltype(ft_lqr.R);
+        ft_lqr.R = RMat::Identity()*r;
         state_space.exp_fn.r = r;
         composite_ss.exp_fn.r = r;
       }}
@@ -465,6 +471,49 @@ def generate_nonlinear_test_cpp(model_name, dim) :
     typedef Models::{0}CmpJordanFormExpm {0}CmpClosedExpm;
     typedef Models::{0}SSComposite::StateType {0}SSCompositeState;
     typedef Models::{0}SSComposite::SystemMatrix {0}SSCompositeSystem;
+
+    TEST({0}Cost, cost_no_inf_nan) {{
+      Models::{0} {1};
+      auto &solver = {1}.solver;
+      /* initial state */
+      {7}
+      /* final state */
+      {6}
+      /* linearization */
+      {1}.linearize(state);
+      auto cost = solver.cost(init_state,state);
+      auto ok = true;
+      if(isinf(std::get<0>(cost)) || isnan(std::get<0>(cost)))
+        ok = false;
+      if(isinf(std::get<1>(cost)) || isnan(std::get<1>(cost)))
+        ok = false;
+      EXPECT_TRUE(ok);
+    }}
+
+    TEST({0}TrajectorySolver, trajectory_no_inf_nan) {{
+      Models::{0} {1};
+      auto &solver = {1}.solver;
+      /* initial state */
+      {7}
+      /* final state */
+      {6}
+      /* linearization */
+      {1}.linearize(state);
+      auto trajectory = solver.solve(init_state,state);
+      auto ok = true;
+      for(const auto &t : trajectory) {{
+        const auto time = std::get<0>(t);
+        const auto &state = std::get<1>(t);
+        const auto &control = std::get<2>(t);
+        if(isinf(time) || isnan(time))
+          ok = false;
+        for(size_t i=0; i<{4}; i++)
+          if(isinf(state(i)) || isnan(state(i)))
+            ok = false;
+        /* TODO : check input */
+      }}
+      EXPECT_TRUE(ok);
+    }}
 
     TEST({0}TimeSolver, d_cost_near_zero) {{
       Models::{0} {1};

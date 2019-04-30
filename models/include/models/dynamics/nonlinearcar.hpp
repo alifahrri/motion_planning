@@ -150,37 +150,6 @@ c << x2_hat*x3_hat*sin(x2_hat), -x2_hat*x3_hat*cos(x2_hat), -x3_hat*x4_hat, 0, 0
       Eigen::Matrix<Scalar,SYS_N,1> c;
     };
 
-    struct NonlinearCarCost
-    {
-      template <typename GramianFn>
-      auto operator()(const NonlinearCarSS &system, const NonlinearCarSS::StateType &xi, const NonlinearCarSS::StateType &xf, const NonlinearCarSS::StateType &c, const Scalar &t, GramianFn &g) const
-        -> decltype(g(t).inverse(), Scalar())
-      {
-				const auto& sys = system;
-        auto f = [&](Scalar t) {
-          return sys.expm(t)*c;
-        };
-        constexpr int max_depth = 100;
-        constexpr Scalar e = Scalar(1e-3);
-        using integration_t = decltype(f);
-        SimpsonsRuleIntegrator<Scalar,integration_t,max_depth> integrator(f,e);
-        auto xbar = exp(t)*xi + integrator(0,t);
-        /* todo : execute around pointer instead of dereferencing */
-        return (*this)(xbar, xf, t, g(t).inverse());
-      }
-      auto operator()(const NonlinearCarSS::StateType &xbar, const NonlinearCarSS::StateType &xf, const Scalar &t, const NonlinearCarSS::SystemMatrix &ginv) const
-        -> decltype(t+(xf-xbar).transpose()*ginv*(xf-xbar))
-      {
-        Scalar cost;
-        cost = t+(xf-xbar).transpose()*ginv*(xf-xbar);
-        return cost;
-      }
-      /* input weighting factor */
-      Scalar r = Models::r;
-      /* a pointer to gramian, the implementation should set the appropriate address befor call the functor */
-      // std::shared_ptr<NonlinearCarGramian> g;
-    };
-
     // NonlinearCarCost nonlinearcar_cost;
 
     /* evaluate mat operation term of xbar integration */
@@ -229,6 +198,38 @@ c << x2_hat*x3_hat*sin(x2_hat), -x2_hat*x3_hat*cos(x2_hat), -x3_hat*x4_hat, 0, 0
       }
 			NonlinearCarSS::StateType state;
       Scalar r = Models::r;
+    };
+
+    struct NonlinearCarCost
+    {
+      NonlinearCarCost(const NonlinearCarSS &system, const NonlinearCarLinearizationConstant &cconstant, const NonlinearCarGramian &gramian)
+        : system(system), cconstant(cconstant), g(gramian)
+      {}
+      Scalar operator()(const NonlinearCarSS::StateType &xi, const NonlinearCarSS::StateType &xf, Scalar t) const
+      {
+        Scalar cost;
+        using cconst_t = decltype(cconstant());
+        using d_vect_t = decltype(xf);
+        const auto &sys = system;
+        cconst_t c = cconstant();
+        NonlinearCarIntegratorEval integrator(sys, c);
+        NonlinearCarSS::StateType integration_term;
+        /* TODO : optimize integration term computation */
+        /* integrate each element of the integration term */
+        integration_term << integrator.eval<0>(0,t),integrator.eval<1>(0,t),integrator.eval<2>(0,t),integrator.eval<3>(0,t),integrator.eval<4>(0,t);
+
+        auto xbar = sys.expm(t)*xi + integration_term;
+        auto ginv = g(t).inverse();
+        cost = t+(xf-xbar).transpose()*ginv*(xf-xbar);
+        return cost;
+      }
+      /* input weighting factor */
+      Scalar r = Models::r;
+      const NonlinearCarSS &system;
+      const NonlinearCarLinearizationConstant &cconstant;
+      const NonlinearCarGramian &g;
+      /* a pointer to gramian, the implementation should set the appropriate address befor call the functor */
+      // std::shared_ptr<NonlinearCarGramian> g;
     };
 
     /* TODO : rename to cost diff or cost derivative to avoid confusion */
@@ -338,10 +339,10 @@ P_inv = P.inverse();
     */
     typedef StateSpace<Scalar,2*SYS_N,SYS_P,SYS_Q,NonlinearCarCmpJordanFormExpm> NonlinearCarSSComposite;
     typedef OptimalTimeFinder<NonlinearCarOptTimeDiff> NonlinearCarOptTimeSolver;
-
-    /* TODO : fix
     typedef FixedTimeLQR<NonlinearCarSS,NonlinearCarGramian> NonlinearCarFixTimeLQR;
     typedef OptTrjSolver<NonlinearCarCost,NonlinearCarOptTimeSolver,NonlinearCarFixTimeLQR,NonlinearCarSS,NonlinearCarGramian,NonlinearCarSSComposite> NonlinearCarTrajectorySolver;
+
+    /* TODO : fix
     */
 
     // NonlinearCarSSComposite nonlinearcar_ss_cmp;
@@ -355,26 +356,32 @@ P_inv = P.inverse();
       typedef NonlinearCarSS::StateType Input;
 
       NonlinearCar()
+        /* initialize composite types */
         : opt_time_diff(state_space, cconstant, gramian)
+        , cost(state_space, cconstant, gramian)
         , opt_time_solver(opt_time_diff)
+        , ft_lqr(state_space, state_space, gramian)
+        , solver(cost, opt_time_solver, ft_lqr, state_space, gramian, composite_ss)
       { }
 
+      /* fundamental types, need linearization */
       NonlinearCarSS state_space;
       NonlinearCarCost cost;
       NonlinearCarGramian gramian;
       NonlinearCarSSComposite composite_ss;
+      /* composite types, dependent to fundamental (or other composite) ones */
       NonlinearCarLinearizationConstant cconstant;
       NonlinearCarOptTimeDiff opt_time_diff;
       NonlinearCarOptTimeSolver opt_time_solver;
-      // NonlinearCarFixTimeLQR ft_lqr = NonlinearCarFixTimeLQR(state_space, state_space, gramian);
-      // NonlinearCarTrajectorySolver solver = NonlinearCarTrajectorySolver(cost, opt_time_solver, ft_lqr, state_space, gramian, composite_ss);
+      NonlinearCarFixTimeLQR ft_lqr;
+      NonlinearCarTrajectorySolver solver;
 
       void set_weight(Scalar r) {
         cost.r = r;
         gramian.r = r;
         opt_time_diff.r = r;
-        // using RMat = decltype(ft_lqr.R);
-        // ft_lqr.R = RMat::Identity()*r;
+        using RMat = decltype(ft_lqr.R);
+        ft_lqr.R = RMat::Identity()*r;
         state_space.exp_fn.r = r;
         composite_ss.exp_fn.r = r;
       }

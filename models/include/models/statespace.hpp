@@ -25,7 +25,7 @@
 template <typename Scalar, int n, int p, int q, typename ExpFN = JordanExp<Scalar,n>, typename LinearizationFN = nullptr_t>
 class StateSpace
 {
-  using LinearizationConcept = ss_utils::LinearizationConcept<>;
+  using LinearizationResolver = ss_utils::LinearizationResolver<>;
 public:
   /* states */
   typedef Eigen::Matrix<Scalar,n,1> StateType;
@@ -93,31 +93,31 @@ public:
 private:
   template <typename LinearizationState>
   auto linearize(choice<2>, const LinearizationState &state) 
-    -> decltype(LinearizationConcept::linearize(state, exp_fn))
+    -> decltype(LinearizationResolver::linearize(state, exp_fn))
   {
-    return LinearizationConcept::linearize(state, exp_fn);
+    return LinearizationResolver::linearize(state, exp_fn);
   }
   /* implementation of linearization calls */
   template <typename LinearizationState>
   auto linearize(choice<1>, const LinearizationState &state) 
-    -> decltype(LinearizationConcept::linearize(this->A, state, linearization_fn))
+    -> decltype(LinearizationResolver::linearize(this->A, state, linearization_fn))
   {
-    return LinearizationConcept::linearize(A, state, linearization_fn);
+    return LinearizationResolver::linearize(A, state, linearization_fn);
   }
 
   template <typename LinearizationState>
   auto linearize(choice<0>, const LinearizationState &state) 
-    -> decltype(LinearizationConcept::linearize(this->P, this->D, this->P_inv, state, linearization_fn))
+    -> decltype(LinearizationResolver::linearize(this->P, this->D, this->P_inv, state, linearization_fn))
   {
-    return LinearizationConcept::linearize(P, D, P_inv, state, linearization_fn);
+    return LinearizationResolver::linearize(P, D, P_inv, state, linearization_fn);
   }
 
   /* TODO : Remove; reason : ill-defined, let LinearizationFN decides */
   /* set linearization if needed */
   auto set_linearization_state(const StateType &state)
-  -> decltype(LinearizationConcept::set_linearization_state(this->exp_fn, state))
+  -> decltype(LinearizationResolver::set_linearization_state(this->exp_fn, state))
   {
-    return LinearizationConcept::set_linearization_state(this->exp_fn, state);
+    return LinearizationResolver::set_linearization_state(this->exp_fn, state);
   }
 
 public:
@@ -139,7 +139,7 @@ public:
 template <typename Scalar, int n, int p, int q, typename LinearizationFN>
 class StateSpace<Scalar,n,p,q,JordanExp<Scalar,n>,LinearizationFN>
 {
-  using LinearizationConcept = ss_utils::LinearizationConcept<>;
+  using LinearizationResolver = ss_utils::LinearizationResolver<>;
 public:
   /* states */
   typedef Eigen::Matrix<Scalar,n,1> StateType;
@@ -207,23 +207,23 @@ public:
 private:
   template <typename LinearizationState>
   auto linearize(choice<2>, const LinearizationState &state) 
-    -> decltype(LinearizationConcept::linearize(state, exp_fn))
+    -> decltype(LinearizationResolver::linearize(state, exp_fn))
   {
-    return LinearizationConcept::linearize(state, exp_fn);
+    return LinearizationResolver::linearize(state, exp_fn);
   }
   /* implementation of linearization calls */
   template <typename LinearizationState>
   auto linearize(choice<1>, const LinearizationState &state) 
-    -> decltype(LinearizationConcept::linearize(A, state, linearization_fn))
+    -> decltype(LinearizationResolver::linearize(A, state, linearization_fn))
   {
-    return LinearizationConcept::linearize(A, state, linearization_fn);
+    return LinearizationResolver::linearize(A, state, linearization_fn);
   }
 
   template <typename LinearizationState>
   auto linearize(choice<0>, const LinearizationState &state) 
-    -> decltype(LinearizationConcept::linearize(P, D, P_inv, state, linearization_fn))
+    -> decltype(LinearizationResolver::linearize(P, D, P_inv, state, linearization_fn))
   {
-    return LinearizationConcept::linearize(P, D, P_inv, state, linearization_fn);
+    return LinearizationResolver::linearize(P, D, P_inv, state, linearization_fn);
   }
 
 public:

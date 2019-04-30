@@ -26,7 +26,7 @@ namespace ss_utils {
 /* TODO : use standalone function instead of struct (?) */
 /* sink hole is disabled by default */
 template <size_t n_functions = 3>
-struct LinearizationConcept {
+struct LinearizationResolver {
   static constexpr size_t n_tag  = n_functions;
 
   template <typename FunctionObject>

@@ -13,6 +13,53 @@
     typedef Models::NonlinearCarSSComposite::StateType NonlinearCarSSCompositeState;
     typedef Models::NonlinearCarSSComposite::SystemMatrix NonlinearCarSSCompositeSystem;
 
+    TEST(NonlinearCarCost, cost_no_inf_nan) {
+      Models::NonlinearCar nonlinearcar;
+      auto &solver = nonlinearcar.solver;
+      /* initial state */
+      Eigen::Matrix<double,5,1> init_state; 
+init_state << 0,0,0,0,0;
+      /* final state */
+      Eigen::Matrix<double,5,1> state; 
+state << 1,1,1,1,1;
+      /* linearization */
+      nonlinearcar.linearize(state);
+      auto cost = solver.cost(init_state,state);
+      auto ok = true;
+      if(isinf(std::get<0>(cost)) || isnan(std::get<0>(cost)))
+        ok = false;
+      if(isinf(std::get<1>(cost)) || isnan(std::get<1>(cost)))
+        ok = false;
+      EXPECT_TRUE(ok);
+    }
+
+    TEST(NonlinearCarTrajectorySolver, trajectory_no_inf_nan) {
+      Models::NonlinearCar nonlinearcar;
+      auto &solver = nonlinearcar.solver;
+      /* initial state */
+      Eigen::Matrix<double,5,1> init_state; 
+init_state << 0,0,0,0,0;
+      /* final state */
+      Eigen::Matrix<double,5,1> state; 
+state << 1,1,1,1,1;
+      /* linearization */
+      nonlinearcar.linearize(state);
+      auto trajectory = solver.solve(init_state,state);
+      auto ok = true;
+      for(const auto &t : trajectory) {
+        const auto time = std::get<0>(t);
+        const auto &state = std::get<1>(t);
+        const auto &control = std::get<2>(t);
+        if(isinf(time) || isnan(time))
+          ok = false;
+        for(size_t i=0; i<5; i++)
+          if(isinf(state(i)) || isnan(state(i)))
+            ok = false;
+        /* TODO : check input */
+      }
+      EXPECT_TRUE(ok);
+    }
+
     TEST(NonlinearCarTimeSolver, d_cost_near_zero) {
       Models::NonlinearCar nonlinearcar;
       auto &time_diff = nonlinearcar.opt_time_diff;
