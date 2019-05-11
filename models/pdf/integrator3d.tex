@@ -1,0 +1,162 @@
+\documentclass{article}%
+\usepackage[T1]{fontenc}%
+\usepackage[utf8]{inputenc}%
+\usepackage{lmodern}%
+\usepackage{textcomp}%
+\usepackage{lastpage}%
+\usepackage{amsmath}%
+\usepackage{amssymb}%
+\usepackage{mathtools}%
+\usepackage{breqn}%
+%
+\title{Derivation of Fixed Final{-}State Free Final{-}Time Control for Integrator3D}%
+\author{Automatically Generated Text}%
+\date{\today}%
+%
+\begin{document}%
+\normalsize%
+\newcommand{\wrapequation}[1]{\begin{dmath} #1 \end{dmath}}%
+\newcommand{\cmdequation}[1]{\begin{equation} #1 \end{equation}}%
+\maketitle%
+\section{Fixed Final{-}State Free Final{-}Time Control for General Linear System}%
+\label{sec:Fixed Final{-}State Free Final{-}Time Control for General Linear System}%
+
+            The linear dynamics of the robot is expressed using :
+
+            \begin{equation} \label{state_space_eq}
+            \dot{\mathbf{x}}=A\mathbf{x}+B\mathbf{u}
+            \end{equation}
+
+            Where $\boldsymbol{x}$ is the state of robot, $\boldsymbol{u}$ is the input of the robot, and $A\in \mathbb{R}^{nxn}$ is the system matrix, and $B \in \mathbb{R}^{nxm}$ is the input matrix. The trajectory of the robot is defined by a tuple $\pi = (\boldsymbol{x}[], \boldsymbol{u}[], \tau)$. Where $\tau$ represents the arrival time of the given trajectory.
+            The cost of a trajectory $\pi$ is defined as :
+
+            \begin{equation} \label{cost_eq}
+            c(\pi) = \int_{0}^{\tau}(1+\boldsymbol{u}(t)^{T}R\boldsymbol{u}(t))dt
+            \end{equation}
+            where $R\in\mathbb{R}^{mxm}$ is the input weighting matrix. The cost function above penalize both the duration of the trajectory, as represented by the term $1$ which will be integrated to $\tau$ which is the duration of the trajectory, and the exerted control input $\boldsymbol{u}(t)$.
+
+            For a fixed final time, fixed final state optimal control problem where arrival time $\tau$, initial state $\boldsymbol{x_{i}}$ and final state $\boldsymbol{x_{f}}$ are given, the open-loop optimal control policy minimizing the cost function above is given by :
+            \begin{equation} \label{input_eq}
+            \boldsymbol{u}(t) = R^{-1}B^{T}e^{A^{T}(\tau-t)}G(\tau)^{-1}(\boldsymbol{x}_{f}-\boldsymbol{\bar{x}}(\tau))
+            \end{equation}
+            where $G(t)$ is the weighted controllability Gramian \cite{lewis2012optimal} defined as :
+
+            \begin{equation} \label{gramian_eq}
+            G(t)=\int_{0}^{t}e^{A(t-t^{'})}BR^{-1}B^{T}e^{A^{T}(t-t^{'})}dt^{'}
+            \end{equation}
+            and $\boldsymbol{\bar{x}}(t)$ described the state at time $t$ when no control input is applied :
+
+            \begin{equation} \label{xbar_eq}
+            \boldsymbol{\bar{x}}(t) = e^{At}\boldsymbol{x}_{i}.
+            \end{equation}
+
+            In \cite{webb2013kinodynamic}, the analysis above is extended to solve fixed final state, free final time optimal control problem. The closed form of cost function is found by filling the control policy above and evaluating the integral:
+
+            \begin{equation} \label{extended_cost_eq}
+            c(\tau) = \tau + (\boldsymbol{x}_f - \boldsymbol{\bar{x}}(\tau))^{T}G(\tau)^{-1}(\boldsymbol{x}_f-\boldsymbol{\bar{x}}(\tau))
+            \end{equation}
+            and the optimal arrival time  :
+
+            \begin{equation} \label{tau_star_eq}
+            \tau^{*} = argmin\left \{ \tau > 0 \right \}c(\tau)
+            \end{equation}
+            and the optimal arrival time $\tau^{*}$ by derive $c(\tau)$ with respect to $\tau$ and solving for $\dot{c}(\tau) = 0$. Where the derivative of $c(\tau)$ is given by :
+
+            \begin{equation} \label{derivative_cost_eq}
+            \dot{c}(\tau) = 1 - 2(A\boldsymbol{x}_f)^{T}\boldsymbol{d}(\tau)-\boldsymbol{d}(\tau)^{T}BR^{-1}B^{T}\boldsymbol{d}(\tau)
+            \end{equation}
+            and $\boldsymbol{d}(\tau)$ is defined as :
+
+            \begin{equation} \label{d_sym_eq}
+            \boldsymbol{d}(\tau) = G(\tau)^{-1}(\boldsymbol{x}_f-\boldsymbol{\bar{x}}(\tau))
+            \end{equation}
+
+            After the optimal arrival time is found, the optimal trajectory connecting $\boldsymbol{x}_i$ to $\boldsymbol{x}_f$ could be solved as follow. 
+            define :
+            
+            \begin{equation} \label{y_sym_eq}
+            \boldsymbol{y}(t) = e^{A^{T}(\tau^{*})}\boldsymbol{d}(\tau^{*})
+            \end{equation}
+            which is the solution of :
+
+            \begin{equation} \label{ydot_eq}
+            \\\dot{\boldsymbol{y}}(t) = -A^{T}\boldsymbol{y}(t),
+            \\\boldsymbol{y}(\tau^{*}) = \boldsymbol{d}(\tau^{*})
+            \end{equation}
+            such that the optimal control policy becomes :
+
+            \begin{equation} \label{ut_eq}
+            \boldsymbol{u}(t) = R^{-1}B^{T}\boldsymbol{y}(t)
+            \end{equation}
+            and filling the optimal control policy above to eq. \ref{state_space_eq} gives the differential equation for $\boldsymbol{x}$:
+
+            \begin{equation} \label{extended_xdot_eq}
+            \\\dot{\boldsymbol{x}}(t) = A\boldsymbol{x}+BR^{-1}B^{T}\boldsymbol{y}(t), \\\boldsymbol{x}(\tau^{*})=\boldsymbol{x_f}
+            \end{equation}
+            combining the two differential equation of eq. \ref{extended_xdot_eq} and eq. \ref{ydot_eq} gives :
+
+            \begin{equation} \label{composite_derivative_eq}
+            \begin{bmatrix}
+            \dot{\boldsymbol{x}}(t)\\
+            \dot{\boldsymbol{y}}(t)
+            \end{bmatrix}
+            =
+            \begin{bmatrix}
+            A & BR^{-1}B^{T}\\
+            0 & -A^{T}
+            \end{bmatrix}
+            \begin{bmatrix}
+            \boldsymbol{x}(t) \\
+            \boldsymbol{y}(t)
+            \end{bmatrix}
+            \end{equation}
+            and the solution to the composite differential equation above is given by:
+
+            \begin{equation} \label{composite_state_space_eq}
+            \begin{bmatrix}
+            \boldsymbol{x}(t)\\
+            \boldsymbol{y}(t)
+            \end{bmatrix}
+            =
+            e^{M(t-\tau^{*})}
+            \begin{bmatrix}
+            \boldsymbol{x}_f \\
+            \boldsymbol{d}(\tau^{*})
+            \end{bmatrix}
+            \end{equation}
+            where
+
+            \begin{equation} \label{m_sym_eq}
+            M = \begin{bmatrix}
+            A & BR^{-1}B^{T}\\
+            0 & -A^{T}
+            \end{bmatrix}
+            \end{equation}
+
+            The equation \ref{composite_state_space_eq} above gives the optimal trajectory $\boldsymbol{x}$ for general system. In the following section, we derived a fixed-state free-final-time controller for double integrator model.
+            
+
+%
+\section{Fixed Final{-}State Free Final{-}Time Control for Integrator3D}%
+\label{sec:Fixed Final{-}State Free Final{-}Time Control for Integrator3D}%
+The linear dynamics of the system : %
+\cmdequation{A = \left[\begin{matrix}0 & 0 & 0 & 1 & 0 & 0\\0 & 0 & 0 & 0 & 1 & 0\\0 & 0 & 0 & 0 & 0 & 1\\0 & 0 & 0 & 0 & 0 & 0\\0 & 0 & 0 & 0 & 0 & 0\\0 & 0 & 0 & 0 & 0 & 0\end{matrix}\right];\; B = \left[\begin{matrix}0 & 0 & 0\\0 & 0 & 0\\0 & 0 & 0\\1 & 0 & 0\\0 & 1 & 0\\0 & 0 & 1\end{matrix}\right]}%
+Define the input weight matrix, \$R\$, as : %
+\cmdequation{R = \left[\begin{matrix}r & 0 & 0\\0 & r & 0\\0 & 0 & r\end{matrix}\right]}%
+Exponential of the system matrix \$A\$ is given by : %
+\wrapequation{e^{At} = \left[\begin{matrix}1 & 0 & 0 & t & 0 & 0\\0 & 1 & 0 & 0 & t & 0\\0 & 0 & 1 & 0 & 0 & t\\0 & 0 & 0 & 1 & 0 & 0\\0 & 0 & 0 & 0 & 1 & 0\\0 & 0 & 0 & 0 & 0 & 1\end{matrix}\right]}%
+The cost function of the system : %
+\wrapequation{c(\tau) = t + \left(x3f - x3i\right) \left(\frac{4 r \left(x3f - x3i\right)}{t} - \frac{6 r \left(- t x3i + x0f - x0i\right)}{t^{2}}\right) + \left(x4f - x4i\right) \left(\frac{4 r \left(x4f - x4i\right)}{t} - \frac{6 r \left(- t x4i + x1f - x1i\right)}{t^{2}}\right) + \left(x5f - x5i\right) \left(\frac{4 r \left(x5f - x5i\right)}{t} - \frac{6 r \left(- t x5i + x2f - x2i\right)}{t^{2}}\right) + \left(- \frac{6 r \left(x3f - x3i\right)}{t^{2}} + \frac{12 r \left(- t x3i + x0f - x0i\right)}{t^{3}}\right) \left(- t x3i + x0f - x0i\right) + \left(- \frac{6 r \left(x4f - x4i\right)}{t^{2}} + \frac{12 r \left(- t x4i + x1f - x1i\right)}{t^{3}}\right) \left(- t x4i + x1f - x1i\right) + \left(- \frac{6 r \left(x5f - x5i\right)}{t^{2}} + \frac{12 r \left(- t x5i + x2f - x2i\right)}{t^{3}}\right) \left(- t x5i + x2f - x2i\right)}%
+The first derivative of the cost function : %
+\wrapequation{\dot{c}(\tau) = - 2 x3f \left(- \frac{6 r \left(x3f - x3i\right)}{t^{2}} + \frac{12 r \left(- t x3i + x0f - x0i\right)}{t^{3}}\right) - 2 x4f \left(- \frac{6 r \left(x4f - x4i\right)}{t^{2}} + \frac{12 r \left(- t x4i + x1f - x1i\right)}{t^{3}}\right) - 2 x5f \left(- \frac{6 r \left(x5f - x5i\right)}{t^{2}} + \frac{12 r \left(- t x5i + x2f - x2i\right)}{t^{3}}\right) + 1 - \frac{\left(\frac{4 r \left(x3f - x3i\right)}{t} - \frac{6 r \left(- t x3i + x0f - x0i\right)}{t^{2}}\right)^{2}}{r} - \frac{\left(\frac{4 r \left(x4f - x4i\right)}{t} - \frac{6 r \left(- t x4i + x1f - x1i\right)}{t^{2}}\right)^{2}}{r} - \frac{\left(\frac{4 r \left(x5f - x5i\right)}{t} - \frac{6 r \left(- t x5i + x2f - x2i\right)}{t^{2}}\right)^{2}}{r}}%
+define $\boldsymbol{d}(\tau)$ as : %
+\wrapequation{\boldsymbol{d}(\tau) = \left[\begin{matrix}- \frac{6 r \left(x3f - x3i\right)}{t^{2}} + \frac{12 r \left(- t x3i + x0f - x0i\right)}{t^{3}}\\- \frac{6 r \left(x4f - x4i\right)}{t^{2}} + \frac{12 r \left(- t x4i + x1f - x1i\right)}{t^{3}}\\- \frac{6 r \left(x5f - x5i\right)}{t^{2}} + \frac{12 r \left(- t x5i + x2f - x2i\right)}{t^{3}}\\\frac{4 r \left(x3f - x3i\right)}{t} - \frac{6 r \left(- t x3i + x0f - x0i\right)}{t^{2}}\\\frac{4 r \left(x4f - x4i\right)}{t} - \frac{6 r \left(- t x4i + x1f - x1i\right)}{t^{2}}\\\frac{4 r \left(x5f - x5i\right)}{t} - \frac{6 r \left(- t x5i + x2f - x2i\right)}{t^{2}}\end{matrix}\right]}%
+The %
+\textit{weighted controllability Gramian }%
+ is expressed as : %
+\wrapequation{G = \left[\begin{matrix}\frac{t^{3}}{3 r} & 0 & 0 & \frac{t^{2}}{2 r} & 0 & 0\\0 & \frac{t^{3}}{3 r} & 0 & 0 & \frac{t^{2}}{2 r} & 0\\0 & 0 & \frac{t^{3}}{3 r} & 0 & 0 & \frac{t^{2}}{2 r}\\\frac{t^{2}}{2 r} & 0 & 0 & \frac{t}{r} & 0 & 0\\0 & \frac{t^{2}}{2 r} & 0 & 0 & \frac{t}{r} & 0\\0 & 0 & \frac{t^{2}}{2 r} & 0 & 0 & \frac{t}{r}\end{matrix}\right]}%
+The composite system expressing the open loop trajectory is defined by : %
+\wrapequation{\begin{bmatrix} \boldsymbol{x}(t)\\ \boldsymbol{y}(t) \end{bmatrix} = \left[\begin{array}{cccccccccccc}1 & 0 & 0 & t & 0 & 0 & - \frac{t^{3}}{6 r} & 0 & 0 & \frac{t^{2}}{2 r} & 0 & 0\\0 & 1 & 0 & 0 & t & 0 & 0 & - \frac{t^{3}}{6 r} & 0 & 0 & \frac{t^{2}}{2 r} & 0\\0 & 0 & 1 & 0 & 0 & t & 0 & 0 & - \frac{t^{3}}{6 r} & 0 & 0 & \frac{t^{2}}{2 r}\\0 & 0 & 0 & 1 & 0 & 0 & - \frac{t^{2}}{2 r} & 0 & 0 & \frac{t}{r} & 0 & 0\\0 & 0 & 0 & 0 & 1 & 0 & 0 & - \frac{t^{2}}{2 r} & 0 & 0 & \frac{t}{r} & 0\\0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & - \frac{t^{2}}{2 r} & 0 & 0 & \frac{t}{r}\\0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0\\0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0\\0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0\\0 & 0 & 0 & 0 & 0 & 0 & - t & 0 & 0 & 1 & 0 & 0\\0 & 0 & 0 & 0 & 0 & 0 & 0 & - t & 0 & 0 & 1 & 0\\0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & - t & 0 & 0 & 1\end{array}\right] \begin{bmatrix} \boldsymbol{x}_f \\ \boldsymbol{d}(\tau^{*}) \end{bmatrix}}
+
+%
+\end{document}

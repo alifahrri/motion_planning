@@ -1,3 +1,4 @@
 rrtstar/scripts/fig0.png
 rrtstar/scripts/detail.txt
 *.json
+*.pyc

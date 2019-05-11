@@ -1,0 +1,9 @@
+# for visualization
+'path_red' : 1.0
+'path_green' : 0.0
+'path_blue' : 1.0
+'path_alpha' : 0.75
+# minimum occupancy to be treated as collision
+'min_collision' : 0.4
+# test file
+'octomap_test_file' : "/home/fahri/data/fr_078_tidyup.bt"

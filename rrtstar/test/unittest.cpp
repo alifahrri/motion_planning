@@ -26,18 +26,18 @@ typedef Models::Integrator2DCmpClosedExpm Integrator2DCmpClosedExpm;
 typedef Models::Integrator2DSSComposite::StateType Integrator2DSSCompositeState;
 typedef Models::Integrator2DSSComposite::SystemMatrix Integrator2DSSCompositeSystem;
 
-TEST(TimeSolver,Solve) {
-  auto &time_diff = Models::integrator2d_opt_time_diff;
-  auto &time_solver = Models::integrator2d_opt_time_solver;
-  auto &sampler = Kinodynamic::Wrapper::get_sampler();
-  auto s0 = sampler();
-  auto s1 = sampler();
+//TEST(TimeSolver,Solve) {
+//  auto &time_diff = Models::integrator2d_opt_time_diff;
+//  auto &time_solver = Models::integrator2d_opt_time_solver;
+//  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+//  auto s0 = sampler();
+//  auto s1 = sampler();
 
-  auto opt_time = time_solver.solve(s0, s1);
-  time_diff.set(s0,s1);
-  auto d_cost = time_diff(opt_time);
-  EXPECT_NEAR(d_cost, 0.0, 0.0001) << d_cost;
-}
+//  auto opt_time = time_solver.solve(s0, s1);
+//  time_diff.set(s0,s1);
+//  auto d_cost = time_diff(opt_time);
+//  EXPECT_NEAR(d_cost, 0.0, 0.0001) << d_cost;
+//}
 
 TEST(TreeInt2D,insert)
 {
@@ -439,101 +439,101 @@ TEST(TrajectorySolver, Solve)
   EXPECT_TRUE(ok) << ss.str();
 }
 
-TEST(Integrator2DClosedExpm, exp)
-{
-  Integrator2DClosedExpm int2d_exp;
-  auto ok = true;
-  std::stringstream ss;
-  for(size_t i=0; i<10; i++) {
-    auto t = i*0.5;
-    auto m = int2d_exp(t);
-    ss << "t(" << t << ") : [";
-    for(size_t j=0; j<4; j++) {
-      for(size_t k=0; k<4; k++)
-      {
-        ss << m(j,k) << (k!=3 ? " " : "; ");
-        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
-      }
-    }
-    ss << "]" << std::endl;
-  }
-  EXPECT_TRUE(ok) << ss.str();
-}
+//TEST(Integrator2DClosedExpm, exp)
+//{
+//  Integrator2DClosedExpm int2d_exp;
+//  auto ok = true;
+//  std::stringstream ss;
+//  for(size_t i=0; i<10; i++) {
+//    auto t = i*0.5;
+//    auto m = int2d_exp(t);
+//    ss << "t(" << t << ") : [";
+//    for(size_t j=0; j<4; j++) {
+//      for(size_t k=0; k<4; k++)
+//      {
+//        ss << m(j,k) << (k!=3 ? " " : "; ");
+//        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+//      }
+//    }
+//    ss << "]" << std::endl;
+//  }
+//  EXPECT_TRUE(ok) << ss.str();
+//}
 
-TEST(Integrator2DSS, exp)
-{
-  // Integrator2DSS int2d;
-  auto &int2d = Models::integrator2d;
-  auto ok = true;
-  std::stringstream ss;
-  for(size_t i=0; i<10; i++) {
-    auto t = i*0.5;
-    auto m = int2d.expm(t);
-    ss << "t(" << t << ") : [";
-    for(size_t j=0; j<4; j++) {
-      for(size_t k=0; k<4; k++)
-      {
-        ss << m(j,k) << (k!=3 ? " " : "; ");
-        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
-      }
-    }
-    ss << "]" << std::endl;
-  }
-  EXPECT_TRUE(ok) << ss.str();
-}
+//TEST(Integrator2DSS, exp)
+//{
+//  // Integrator2DSS int2d;
+//  auto &int2d = Models::integrator2d;
+//  auto ok = true;
+//  std::stringstream ss;
+//  for(size_t i=0; i<10; i++) {
+//    auto t = i*0.5;
+//    auto m = int2d.expm(t);
+//    ss << "t(" << t << ") : [";
+//    for(size_t j=0; j<4; j++) {
+//      for(size_t k=0; k<4; k++)
+//      {
+//        ss << m(j,k) << (k!=3 ? " " : "; ");
+//        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+//      }
+//    }
+//    ss << "]" << std::endl;
+//  }
+//  EXPECT_TRUE(ok) << ss.str();
+//}
 
-TEST(Integrator2DSSComposite, exp)
-{
-  // Integrator2DSSComposite ss_int2d;
-  auto &ss_int2d = Models::integrator2d_ss_cmp;
-  auto ok = true;
-  std::stringstream ss;
-  for(size_t i=0; i<10; i++) {
-    auto t = i*0.5;
-    auto m = ss_int2d.expm(t);
-    ss << "t(" << t << ") : [";
-    for(size_t j=0; j<4; j++) {
-      for(size_t k=0; k<4; k++)
-      {
-        ss << m(j,k) << (k!=3 ? " " : "; ");
-        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
-      }
-    }
-    ss << "]" << std::endl;
-  }
-  EXPECT_TRUE(ok) << ss.str();
-}
+//TEST(Integrator2DSSComposite, exp)
+//{
+//  // Integrator2DSSComposite ss_int2d;
+//  auto &ss_int2d = Models::integrator2d_ss_cmp;
+//  auto ok = true;
+//  std::stringstream ss;
+//  for(size_t i=0; i<10; i++) {
+//    auto t = i*0.5;
+//    auto m = ss_int2d.expm(t);
+//    ss << "t(" << t << ") : [";
+//    for(size_t j=0; j<4; j++) {
+//      for(size_t k=0; k<4; k++)
+//      {
+//        ss << m(j,k) << (k!=3 ? " " : "; ");
+//        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+//      }
+//    }
+//    ss << "]" << std::endl;
+//  }
+//  EXPECT_TRUE(ok) << ss.str();
+//}
 
-TEST(Integrator2DGramian, gram)
-{
-  Integrator2DGramian g;
-  auto ok = true;
-  std::stringstream ss;
-  for(size_t i=1; i<30; i++) {
-    auto t = i*0.5;
-    auto m = g(t);
-    auto m_inv = m.inverse();
-    ss << "t(" << t << ") : [";
-    for(size_t j=0; j<4; j++) {
-      for(size_t k=0; k<4; k++)
-      {
-        ss << m(j,k) << (k!=3 ? " " : "; ");
-        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
-      }
-    }
-    ss << "]" << std::endl;
-    ss << "t(" << t << ") : inverse [";
-    for(size_t j=0; j<4; j++) {
-      for(size_t k=0; k<4; k++)
-      {
-        ss << m_inv(j,k) << (k!=3 ? " " : "; ");
-        if(isnan(m_inv(j,k)) || isinf(m_inv(j,k))) ok = false;
-      }
-    }
-    ss << "]" << std::endl;
-  }
-  EXPECT_TRUE(ok) << ss.str();
-}
+//TEST(Integrator2DGramian, gram)
+//{
+//  Integrator2DGramian g;
+//  auto ok = true;
+//  std::stringstream ss;
+//  for(size_t i=1; i<30; i++) {
+//    auto t = i*0.5;
+//    auto m = g(t);
+//    auto m_inv = m.inverse();
+//    ss << "t(" << t << ") : [";
+//    for(size_t j=0; j<4; j++) {
+//      for(size_t k=0; k<4; k++)
+//      {
+//        ss << m(j,k) << (k!=3 ? " " : "; ");
+//        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+//      }
+//    }
+//    ss << "]" << std::endl;
+//    ss << "t(" << t << ") : inverse [";
+//    for(size_t j=0; j<4; j++) {
+//      for(size_t k=0; k<4; k++)
+//      {
+//        ss << m_inv(j,k) << (k!=3 ? " " : "; ");
+//        if(isnan(m_inv(j,k)) || isinf(m_inv(j,k))) ok = false;
+//      }
+//    }
+//    ss << "]" << std::endl;
+//  }
+//  EXPECT_TRUE(ok) << ss.str();
+//}
 
 TEST(Integrator2DGramian, d_opt)
 {
@@ -591,68 +591,68 @@ TEST(Integrator2DGramian, d_opt)
   EXPECT_TRUE(ok) << ss.str();
 }
 
-TEST(Integrator2DCmpClosedExpm, exp)
-{
-  Integrator2DCmpClosedExpm cmp_int2d_exp;
-  auto ok = true;
-  std::stringstream ss;
-  for(size_t i=0; i<10; i++) {
-    auto t = i*0.5;
-    auto m = cmp_int2d_exp(t);
-    ss << "t(" << t << ") : [";
-    for(size_t j=0; j<8; j++) {
-      for(size_t k=0; k<8; k++)
-      {
-        ss << m(j,k) << (k==7 ? " " : "; ");
-        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
-      }
-    }
-    ss << "]" << std::endl;
-  }
-  EXPECT_TRUE(ok) << ss.str();
-}
+//TEST(Integrator2DCmpClosedExpm, exp)
+//{
+//  Integrator2DCmpClosedExpm cmp_int2d_exp;
+//  auto ok = true;
+//  std::stringstream ss;
+//  for(size_t i=0; i<10; i++) {
+//    auto t = i*0.5;
+//    auto m = cmp_int2d_exp(t);
+//    ss << "t(" << t << ") : [";
+//    for(size_t j=0; j<8; j++) {
+//      for(size_t k=0; k<8; k++)
+//      {
+//        ss << m(j,k) << (k==7 ? " " : "; ");
+//        if(isnan(m(j,k)) || isinf(m(j,k))) ok = false;
+//      }
+//    }
+//    ss << "]" << std::endl;
+//  }
+//  EXPECT_TRUE(ok) << ss.str();
+//}
 
-TEST(Integrator2DSSCompositeState, composite_state)
-{
-  auto &g = Models::integrator2d_gram;
-  auto &tsolver = Models::integrator2d_opt_time_solver;
-  auto &sampler = Kinodynamic::Wrapper::get_sampler();
-  auto &int2d = Models::integrator2d;
-  auto s0 = sampler();
-  auto s1 = sampler();
-  auto opt_time = tsolver.solve(s0, s1);
-  auto d_opt = g(opt_time).inverse()*(s1-int2d.expm((opt_time))*s0);
-  Integrator2DSSCompositeState cmp_state;
-  cmp_state << s1, d_opt;
+//TEST(Integrator2DSSCompositeState, composite_state)
+//{
+//  auto &g = Models::integrator2d_gram;
+//  auto &tsolver = Models::integrator2d_opt_time_solver;
+//  auto &sampler = Kinodynamic::Wrapper::get_sampler();
+//  auto &int2d = Models::integrator2d;
+//  auto s0 = sampler();
+//  auto s1 = sampler();
+//  auto opt_time = tsolver.solve(s0, s1);
+//  auto d_opt = g(opt_time).inverse()*(s1-int2d.expm((opt_time))*s0);
+//  Integrator2DSSCompositeState cmp_state;
+//  cmp_state << s1, d_opt;
 
-  auto ok = true;
-  std::stringstream ss;
-  ss << "("
-     << s0(0) << ","
-     << s0(1) << ","
-     << s0(2) << ","
-     << s0(3)
-     << ")->("
-     << s1(0) << ","
-     << s1(1) << ","
-     << s1(2) << ","
-     << s1(3)
-     << ")" << std::endl;
-  ss << "[ ";
-  ss << "opt_time(" << opt_time << ") : [";
-  for(size_t k=0; k<4; k++)
-  {
-    ss << d_opt(k) << (k==3 ? "" : " ");
-    if(isnan(d_opt(k)) || isinf(d_opt(k))) ok = false;
-  }
-  ss << "]" << std::endl;
-  for(size_t j=0; j<8; j++) {
-    ss << cmp_state(j) << (j==7 ? "" : " ");
-    if(isnan(cmp_state(j)) || isinf(cmp_state(j))) ok = false;
-  }
-  ss << "]" << std::endl;
-  EXPECT_TRUE(ok) << ss.str();
-}
+//  auto ok = true;
+//  std::stringstream ss;
+//  ss << "("
+//     << s0(0) << ","
+//     << s0(1) << ","
+//     << s0(2) << ","
+//     << s0(3)
+//     << ")->("
+//     << s1(0) << ","
+//     << s1(1) << ","
+//     << s1(2) << ","
+//     << s1(3)
+//     << ")" << std::endl;
+//  ss << "[ ";
+//  ss << "opt_time(" << opt_time << ") : [";
+//  for(size_t k=0; k<4; k++)
+//  {
+//    ss << d_opt(k) << (k==3 ? "" : " ");
+//    if(isnan(d_opt(k)) || isinf(d_opt(k))) ok = false;
+//  }
+//  ss << "]" << std::endl;
+//  for(size_t j=0; j<8; j++) {
+//    ss << cmp_state(j) << (j==7 ? "" : " ");
+//    if(isnan(cmp_state(j)) || isinf(cmp_state(j))) ok = false;
+//  }
+//  ss << "]" << std::endl;
+//  EXPECT_TRUE(ok) << ss.str();
+//}
 
 TEST(RandomGen2, Random) {
   state_t s0, s1;

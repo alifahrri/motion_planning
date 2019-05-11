@@ -1,0 +1,10 @@
+string model
+State xi
+State xf
+float64[] params
+---
+string model
+float64 cost
+float64 time
+StampedState[] trajectory
+StampedState[] inputs
