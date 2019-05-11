@@ -1,4 +1,4 @@
 <launch>
-  <node name="integrator2d_trajectory_server" pkg="rrtstar" type="rrtstar_integrator2d_trajectory_demo" output="screen"/>
-  <node name="integrator2d_trajectory_client" pkg="rrtstar" type="integrator2d_trajectory_demo" output="screen"/>
+  <node name="integrator2d_trajectory_server" pkg="rrtstar" type="rrtstar_integrator2d_trajectory" output="screen"/>
+  <node name="integrator2d_trajectory_client" pkg="rrtstar" type="integrator2d_trajectory_demo.py" output="screen"/>
 </launch>
