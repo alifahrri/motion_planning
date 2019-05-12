@@ -178,7 +178,9 @@ endif()
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-catkin_add_gtest(${PROJECT_NAME}-test test/unittest.cpp)
+catkin_add_gtest(${PROJECT_NAME}-test test/unittest.cpp
+  test/nonlinearcar.cpp
+)
 if(TARGET ${PROJECT_NAME}-test)
   target_link_libraries(${PROJECT_NAME}-test rrtstar_integrator2d integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 endif()
