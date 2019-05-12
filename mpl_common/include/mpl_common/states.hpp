@@ -33,9 +33,10 @@ struct State : public Eigen::Matrix<scalar,n,1>
 };
 
 template
-<typename scalar, int n>
+<typename scalar, int n, typename state_t = State<scalar,n>>
 struct States
 {
+  using state_type = state_t;
   States() {}
 
   inline State<scalar,n>& operator[](const size_t &i) { return states[i]; }
