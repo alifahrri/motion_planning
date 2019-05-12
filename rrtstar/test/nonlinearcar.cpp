@@ -31,3 +31,39 @@ TEST(nonlinearcar_rrt, cost_no_inf_nan)
     EXPECT_TRUE(!std::isnan(c));
     EXPECT_TRUE(!std::isinf(c));
 }
+
+TEST(nonlinearcar_rrt, cost_non_negative)
+{
+    Models::NonlinearCar car;
+    using state_t = State<double,Models::n>;
+    using cost_t = mpl::Cost<double,state_t,decltype(car.solver)>;
+    cost_t cost(car.solver);
+    /* linearization */
+    state_t xi, xf; 
+    xf << 1,1,1,1,1;
+    xi << 0,0,0,0,0;
+    car.linearize(xf);
+    auto c = cost(xi,xf);
+    EXPECT_GT(c,0.0);
+}
+
+TEST(nonlinearcar_rrt, cost_equal_to_solver_cost)
+{
+    Models::NonlinearCar car;
+    using state_t = State<double,Models::n>;
+    using cost_t = mpl::Cost<double,state_t,decltype(car.solver)>;
+    cost_t cost(car.solver);
+    /* linearization */
+    state_t xi, xf; 
+    xf << 1,1,1,1,1;
+    xi << 0,0,0,0,0;
+    car.linearize(xf);
+    auto c = cost(xi,xf);
+    EXPECT_EQ(c,std::get<1>(car.solver.cost(xi,xf)));
+}
+
+int main(int argc, char **argv)
+{
+  testing::InitGoogleTest(&argc,argv);
+  return RUN_ALL_TESTS();
+}
