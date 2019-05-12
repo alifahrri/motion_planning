@@ -14,7 +14,7 @@ namespace mpl {
         Cost(Solver &solver) 
             : solver(solver)
         {}
-        Scalar operator()(const State &s0, const State &s1) const
+        Scalar operator()(const State &s0, const State &s1)
         {
             using solver_state_t = typename Solver::State;
             return std::get<1>(solver.cost(
