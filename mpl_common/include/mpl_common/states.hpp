@@ -15,6 +15,12 @@ struct State : public Eigen::Matrix<scalar,n,1>
   {
     // *this = m;
   }
+  operator Eigen::Matrix<scalar,n,1>() {
+    Eigen::Matrix<scalar,n,1> mat;
+    for(size_t i=0; i<n; i++)
+      mat(i) = (*this)(i);
+    return mat;
+  }
   scalar cost() const { return c; }
   void setCost(const scalar &c) { this->c = c; }
   scalar c = scalar(0.0);
