@@ -180,7 +180,7 @@ endif()
 
 catkin_add_gtest(${PROJECT_NAME}-test test/unittest.cpp)
 if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test rrtstar_integrator2d integrator2d_model ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+  target_link_libraries(${PROJECT_NAME}-test rrtstar_integrator2d  ${GTEST_LIBRARIES} ${lapacke_LIBRARIES} ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 endif()
 
 catkin_add_gtest(${PROJECT_NAME}-nonlinearcar-test
