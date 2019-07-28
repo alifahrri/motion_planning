@@ -24,47 +24,47 @@ namespace mpl {
             * @brief : access to placeholder
             * @param : i index of the trajectory
             */
-            auto operator[](size_t i) {
-                return static_cast<T*>(this)->trajectory[i];
+            decltype(auto) operator[](size_t i) {
+                return (static_cast<T*>(this)->trajectory[i]);
             }
-            auto operator[](size_t i) const {
-                return static_cast<const T*>(this)->trajectory[i];
+            decltype(auto) operator[](size_t i) const {
+                return (static_cast<const T*>(this)->trajectory[i]);
             }
-            auto at(size_t i) {
-                return static_cast<T*>(this)->trajectory.at(i);
+            decltype(auto) at(size_t i) {
+                return (static_cast<T*>(this)->trajectory.at(i));
             }
-            auto at(size_t i) const {
-                return static_cast<const T*>(this)->trajectory.at(i);
+            decltype(auto) at(size_t i) const {
+                return (static_cast<const T*>(this)->trajectory.at(i));
             }
             /**
             * @brief : make this type iterable
             */
-            auto begin() {
-                return static_cast<T*>(this)->trajectory.begin();
+            decltype(auto) begin() {
+                return (static_cast<T*>(this)->trajectory.begin());
             }
-            auto begin() const {
-                return static_cast<const T*>(this)->trajectory.begin();
+            decltype(auto) begin() const {
+                return (static_cast<const T*>(this)->trajectory.begin());
             }
-            auto end() {
-                return static_cast<T*>(this)->trajectory.end();
+            decltype(auto) end() {
+                return (static_cast<T*>(this)->trajectory.end());
             }
-            auto end() const {
-                return static_cast<const T*>(this)->trajectory.end();
+            decltype(auto) end() const {
+                return (static_cast<const T*>(this)->trajectory.end());
             }
             /**
             * @brief : access to first and last element
             */
-            auto front() {
-                return static_cast<T*>(this)->trajectory.front();
+            decltype(auto) front() {
+                return (static_cast<T*>(this)->trajectory.front());
             }
-            auto front() const {
-                return static_cast<const T*>(this)->trajectory.front();
+            decltype(auto) front() const {
+                return (static_cast<const T*>(this)->trajectory.front());
             }
-            auto back() {
-                return static_cast<T*>(this)->trajectory.back();
+            decltype(auto) back() {
+                return (static_cast<T*>(this)->trajectory.back());
             }
-            auto back() const {
-                return static_cast<const T*>(this)->trajectory.back();
+            decltype(auto) back() const {
+                return (static_cast<const T*>(this)->trajectory.back());
             }
             /**
             * @brief : get the size of trajectory container
