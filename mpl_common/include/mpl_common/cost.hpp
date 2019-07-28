@@ -4,12 +4,23 @@
 #include <cstdio>
 
 namespace mpl {
+    /**
+     * @brief : generic class wrapper 
+     * @tparam :
+     * - Scalar : cost representation
+     * - State : state representation
+     * - Solver : cost solver representation
+     * @requirements :
+     * - Solver should have public member function cost and return Scalar
+     * - Solver should have public member type State
+     * - State should be convertible to Solver::State
+     */
     template <typename Scalar, typename State, typename Solver>
     struct Cost {
         /* member types */
-        using cost_type = Scalar;
-        using state_type = State;
-        using solver_type = Solver;
+        using cost_type     = Scalar;
+        using state_type    = State;
+        using solver_type   = Solver;
         
         Cost(Solver &solver) 
             : solver(solver)
