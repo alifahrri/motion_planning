@@ -20,8 +20,9 @@ TEST(NonlinearCarState, state_assign)
 TEST(NonlinearCarCost, cost_no_inf_nan)
 {
     Models::NonlinearCar car;
-    using state_t = State<double,Models::n>;
-    using cost_t = mpl::Cost<double,state_t,decltype(car.solver)>;
+    using state_t   = State<double,Models::n>;
+    using solver_t  = std::decay_t<decltype(car.solver)>;
+    using cost_t    = mpl::Cost<double,state_t,solver_t>;
     cost_t cost(car.solver);
     static_assert(
         std::is_same_v<
@@ -35,10 +36,10 @@ TEST(NonlinearCarCost, cost_no_inf_nan)
             double
         >
     );
-    /* linearization */
     state_t xi, xf; 
     xf << 1,1,1,1,1;
     xi << 0,0,0,0,0;
+    /* linearization */
     car.linearize(xf);
     auto c = cost(xi,xf);
     EXPECT_TRUE(!std::isnan(c));
@@ -48,13 +49,14 @@ TEST(NonlinearCarCost, cost_no_inf_nan)
 TEST(NonlinearCarCost, cost_non_negative)
 {
     Models::NonlinearCar car;
-    using state_t = State<double,Models::n>;
-    using cost_t = mpl::Cost<double,state_t,decltype(car.solver)>;
+    using state_t   = State<double,Models::n>;
+    using solver_t  = std::decay_t<decltype(car.solver)>;
+    using cost_t    = mpl::Cost<double,state_t,solver_t>;
     cost_t cost(car.solver);
-    /* linearization */
     state_t xi, xf; 
     xf << 1,1,1,1,1;
     xi << 0,0,0,0,0;
+    /* linearization */
     car.linearize(xf);
     auto c = cost(xi,xf);
     EXPECT_GT(c,0.0);
@@ -64,7 +66,8 @@ TEST(NonlinearCarCost, cost_equal_to_solver_cost)
 {
     Models::NonlinearCar car;
     using state_t = State<double,Models::n>;
-    using cost_t = mpl::Cost<double,state_t,decltype(car.solver)>;
+    using solver_t = std::decay_t<decltype(car.solver)>;
+    using cost_t = mpl::Cost<double,state_t,solver_t>;
     /* linearization */
     state_t xi, xf; 
     xf << 1,1,1,1,1;
@@ -79,8 +82,10 @@ TEST(NonlinearCarSampler, random_sample_no_inf_nan)
 {
     auto sampler = Kinodynamic::Car::CarSampler();
     auto s0 = sampler();
-    for(const auto &s : s0)
-        EXPECT_FALSE(std::isnan(s) || std::isinf(s));
+    for(const auto &s : s0) {
+        EXPECT_FALSE(std::isnan(s));
+        EXPECT_FALSE(std::isinf(s));
+    }
 }
 
 TEST(NonlinearCarSampler, random_sample_bounded)
@@ -119,11 +124,14 @@ TEST(NonlinearCarConnector, non_empty_solver_trajectory)
     xf << 1,1,1,1,1;
     xi << 0,0,0,0,0;
     car.linearize(xf);
-    auto trajectory = connector.template operator()<decltype(solver.solve(xi,xf))>(xi,xf);
+    using solver_trajectory_t = std::decay_t<decltype(solver.solve(xi,xf))>;
+    auto trajectory = connector.template operator()<solver_trajectory_t>(xi,xf);
     EXPECT_TRUE(trajectory.size());
     for(const auto &t : trajectory)
-        for(size_t i=0; i<Models::n; i++)
-            EXPECT_FALSE(std::isinf(std::get<1>(t)(i)) || std::isnan(std::get<1>(t)(i))) << std::get<1>(t)(i);
+        for(size_t i=0; i<Models::n; i++) {
+            EXPECT_FALSE(std::isinf(std::get<1>(t)(i)));
+            EXPECT_FALSE(std::isnan(std::get<1>(t)(i)));
+        }
 }
 
 TEST(NonlinearCarConnector, non_empty_solver_dynamic_trajectory)
@@ -139,11 +147,14 @@ TEST(NonlinearCarConnector, non_empty_solver_dynamic_trajectory)
     xi << 0.,0.,0.,0.,0.;
     car.linearize(xf);
     size_t n = 99;
-    auto trajectory = connector.template operator()<decltype(solver.solve(xi,xf,n))>(xi,xf,n);
+    using solver_trajectory_t = std::decay_t<decltype(solver.solve(xi,xf,n))>;
+    auto trajectory = connector.template operator()<solver_trajectory_t>(xi,xf,n);
     EXPECT_TRUE(trajectory.size());
     for(const auto &t : trajectory)
-        for(size_t i=0; i<Models::n; i++)
-            EXPECT_FALSE(std::isinf(std::get<1>(t)(i)) || std::isnan(std::get<1>(t)(i)) ) << std::get<1>(t)(i);
+        for(size_t i=0; i<Models::n; i++) {
+            EXPECT_FALSE(std::isinf(std::get<1>(t)(i)));
+            EXPECT_FALSE(std::isnan(std::get<1>(t)(i)));
+        }
 }
 
 TEST(NonlinearCarConnector, non_empty_trajectory)
@@ -161,8 +172,10 @@ TEST(NonlinearCarConnector, non_empty_trajectory)
     auto trajectory = connector(xi,xf);
     EXPECT_TRUE(trajectory.size());
     for(const auto &t : trajectory)
-        for(size_t i=0; i<Models::n; i++)
-            EXPECT_FALSE(std::isinf(t.state()(i)) || std::isnan(t.state()(i)));
+        for(size_t i=0; i<Models::n; i++) {
+            EXPECT_FALSE(std::isinf(t.state()(i)));
+            EXPECT_FALSE(std::isnan(t.state()(i)));
+        }
 }
 
 TEST(NonlinearCarConnector, init_and_final_state)
@@ -172,17 +185,19 @@ TEST(NonlinearCarConnector, init_and_final_state)
     auto &solver = car.solver;
     auto tree = Kinodynamic::Car::CarTree();
     auto connector = Kinodynamic::Car::CarConnector(solver,tree);
-    std::array<std::decay_t<decltype(sampler())>,10> states = {
+    using sample_t = std::decay_t<decltype(sampler())>;
+    /* TODO : use deterministic value instead of random sampling (?) */
+    std::array<sample_t,10> states = {
         sampler(), sampler(), sampler(), sampler(), sampler(),
         sampler(), sampler(), sampler(), sampler(), sampler()
     };
-    // for(auto &s : states) s = sampler();
-    constexpr auto zero = 1e-5;
+    constexpr auto zero = 9e-5;
     for(size_t i=1; i<states.size(); i++) {
         Kinodynamic::Car::ModelState xf, xi;
         xf << states[i][0], states[i][1], states[i][2], states[i][3], states[i][4];
         xi << states[i-1][0], states[i-1][1], states[i-1][2], states[i-1][3], states[i-1][4];
         car.linearize(xf);
+        /* TODO : recovery if connection is impossible, e.g. not linearizable */
         auto trajectory = connector(xi, xf);
         for(size_t k=0; k<Kinodynamic::Car::N; k++) {
             EXPECT_NEAR(trajectory.front().state()(k),states[i-1][k],zero);
