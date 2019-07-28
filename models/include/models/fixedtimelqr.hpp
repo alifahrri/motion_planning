@@ -119,28 +119,34 @@ public:
 
 template
 <
-    // a Cost class should overrides operator(), takes State xi, State xf, numeric
-    // t as arguments and return numeric scalar value
+    /* a Cost class should overrides operator(), takes State xi, State xf, numeric
+        t as arguments and return numeric scalar value
+    */
     class Cost,
-    // an OptTime class should have 'solve' function
-    // and takes (const State&, const State&) as an argument and returns
-    // scalar numeric type
+    /* an OptTime class should have 'solve' function
+        and takes (const State&, const State&) as an argument and returns
+        scalar numeric type
+    */
     class OptTime,
-    // a Control class should have 'solve' function with
-    // (numeric, numeric, const State&, const State&) argunemts and
-    // returns Control::Input
+    /* a Control class should have 'solve' function with
+     (numeric, numeric, const State&, const State&) argunemts and
+     returns Control::Input
+    */
     class Control,
-    // a system should have matrix A and B
+    /* a system should have matrix A and B */
     class System,
-    // gramian classes should implements operator() with parameter (t)
-    // and invertible by calling G(t).inv()
+    /* gramian classes should implements operator() with parameter (t)
+        and invertible by calling G(t).inv()
+    */
     class Gramian,
-    // a composite system has 2(nxn) size of System,
-    // to compute the trajectory given time, optimal time and xf
-    // should have 'expm' method that gives exponential matrix
+    /* a composite system has 2(nxn) size of System,
+        to compute the trajectory given time, optimal time and xf
+        should have 'expm' method that gives exponential matrix
+    */
     class CompositeSystem
-    // State class should overloads operator << to fill its value
-    // given states with another dimension
+    /* State class should overloads operator << to fill its value
+        given states with another dimension
+    */
     // , class CompositeState = typename CompositeSystem::StateType
     // , class State = typename System::StateType
     // , class Input = typename System::InputType
@@ -149,18 +155,47 @@ template
 // compute optimal open loop trajectory given initial and final states
 class OptTrjSolver
 {
-  // we use this so that we do not pollute namspace
-  // or we could wrap this solver class inside some namespace
+  /* we use this so that we do not pollute namspace
+   or we could wrap this solver class inside some namespace */
   template <class Type>
   using decay = std::decay_t<Type>;
 public:
   using State = typename System::StateType;
   using CompositeState = typename CompositeSystem::StateType;
-  // deduce the Input type while making sure the Control class has required function
+  /* deduce the Input type while making sure the Control class has required function */
   using Input = decay<decltype(std::declval<Control>().solve(std::declval<Scalar>(), std::declval<Scalar>(), std::declval<State>(), std::declval<State>()))>;
   //  using Input = System::Input;
   //  using State = std::decay_t<decltype(std::declval<System>().expm(double(0.0)))>;
   typedef std::vector<std::tuple<Scalar,State,Input>> Trajectory;
+  
+private:
+    inline
+    Trajectory solve(const State& xi, const State& xf, Scalar dt, size_t nsegment, auto opt_time) 
+    {
+        std::vector<std::tuple<Scalar,State,Input>> ret;
+        if(xi == xf) return ret;
+        // auto opt_time = opt_time_solver.solve(xi,xf);
+        auto segment = nsegment;
+        auto g_mat = G(opt_time);
+        auto g_inv = g_mat.inverse();
+        auto d_opt = g_inv*(xf-system.expm(opt_time)*xi);
+        CompositeState cmp_state;
+        cmp_state << xf, d_opt;
+        for(int i=0; i<=segment; i++) {
+            auto t = opt_time*i/segment;
+            t = std::min(t,opt_time);
+            auto em = cmp_sys.expm(t-opt_time);
+            CompositeState s = em*cmp_state;
+            State state, yt;
+            for(int k=0; k<s.rows()/2; k++)
+            state(k) = s(k);
+            for(int k=s.rows()/2; k<s.rows(); k++)
+            yt(k-s.rows()/2) = s(k);
+            auto ctrl = controller.R.inverse() * system.B.transpose() * yt;
+            ret.push_back(std::make_tuple(t,state,ctrl));
+        }
+        return ret;
+    }
 public:
   ATTRIBUTE
   OptTrjSolver(Cost &cost_fn, OptTime &time_solver, Control &controller, System &system, Gramian &G, CompositeSystem &cmp_sys)
@@ -170,8 +205,7 @@ public:
 #ifdef GPU
   __host__
 #endif
-  Trajectory
-  solve(const State& xi, const State& xf)
+  Trajectory solve(const State& xi, const State& xf)
   {
     std::vector<std::tuple<Scalar,State,Input>> ret;
     if(xi != xf)
@@ -202,39 +236,25 @@ public:
     }
     return ret;
   }
-
-  Trajectory
-  solve(const State& xi, const State& xf, Scalar dt)
+  
+  Trajectory solve(const State& xi, const State& xf, size_t nsegment) 
   {
-    std::vector<std::tuple<Scalar,State,Input>> ret;
-    if(xi != xf)
-    {
+      Trajectory ret;
+      if (xi==xf) return ret;
       auto opt_time = opt_time_solver.solve(xi,xf);
-      auto segment = int(opt_time/dt);
-      auto g_mat = G(opt_time);
-      auto g_inv = g_mat.inverse();
-      auto d_opt = g_inv*(xf-system.expm(opt_time)*xi);
-      CompositeState cmp_state;
-      cmp_state << xf, d_opt;
-      // ret.push_back(std::make_tuple(TimeIdx(0.0),xi,Input()));
-      for(int i=0; i<=segment; i++) {
-        auto t = opt_time*i/segment;
-        t = std::min(t,opt_time);
-        // auto ctrl = controller.solve(opt_time, t, xi, xf);
-        auto em = cmp_sys.expm(t-opt_time);
-        CompositeState s = em*cmp_state;
-        State state, yt;
-        for(int k=0; k<s.rows()/2; k++)
-          state(k) = s(k);
-        for(int k=s.rows()/2; k<s.rows(); k++)
-          yt(k-s.rows()/2) = s(k);
-        // State state(s.data());
-        // State yt(s.data()+s.rows());
-        auto ctrl = controller.R.inverse() * system.B.transpose() * yt;
-        ret.push_back(std::make_tuple(t,state,ctrl));
-      }
-    }
-    return ret;
+      auto dt = opt_time / nsegment;
+      ret = solve(xi,xf,dt,nsegment,opt_time);
+      return ret;
+  }
+
+  Trajectory solve(const State& xi, const State& xf, Scalar dt)
+  {
+      Trajectory ret;
+      if (xi==xf) return ret;
+      auto opt_time = opt_time_solver.solve(xi,xf);
+      size_t nsegment = std::round(opt_time/dt);
+      ret = solve(xi,xf,dt,nsegment,opt_time);
+      return ret;
   }
 
   template<typename scalar=Scalar>

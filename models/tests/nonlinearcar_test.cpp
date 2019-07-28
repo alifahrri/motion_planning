@@ -25,12 +25,10 @@ state << 1,1,1,1,1;
   /* linearization */
   nonlinearcar.linearize(state);
   auto cost = solver.cost(init_state,state);
-  auto ok = true;
-  if(isinf(std::get<0>(cost)) || isnan(std::get<0>(cost)))
-    ok = false;
-  if(isinf(std::get<1>(cost)) || isnan(std::get<1>(cost)))
-    ok = false;
-  EXPECT_TRUE(ok);
+  EXPECT_TRUE(!std::isnan(std::get<0>(cost)));
+  EXPECT_TRUE(!std::isnan(std::get<1>(cost)));
+  EXPECT_TRUE(!std::isinf(std::get<0>(cost)));
+  EXPECT_TRUE(!std::isinf(std::get<1>(cost)));
 }
 
 TEST(NonlinearCarTrajectorySolver, trajectory_no_inf_nan) {

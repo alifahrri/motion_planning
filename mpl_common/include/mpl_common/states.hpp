@@ -4,8 +4,7 @@
 #include <vector>
 #include <eigen3/Eigen/Core>
 
-template
-<typename scalar, int n>
+template <typename scalar, int n>
 struct State : public Eigen::Matrix<scalar,n,1>
 {
   static constexpr int dim = n;
@@ -14,6 +13,15 @@ struct State : public Eigen::Matrix<scalar,n,1>
     : Eigen::Matrix<scalar,n,1>(m)
   {
     // *this = m;
+  }
+  template <typename Iterable>
+    // requires Container<Iterable>
+  State(const Iterable &container) {
+      size_t i=0;
+      for(const auto &c : container) {
+          if (i>=n) break;
+          (*this)(i++) = c;
+      }
   }
   operator Eigen::Matrix<scalar,n,1>() {
     Eigen::Matrix<scalar,n,1> mat;

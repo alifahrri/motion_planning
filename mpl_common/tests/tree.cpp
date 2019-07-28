@@ -4,11 +4,12 @@
 #include "states.hpp"
 #include "trajectory.hpp"
 
-constexpr size_t n = 5; 
-constexpr size_t segment = 10;
-using state_t = State<double,n>;
-using states_t = States<double,n>;
-using edge_t = mpl::Trajectory<double,State<double,n>,segment,n>;
+constexpr size_t n          = 5; 
+constexpr size_t segment    = 10;
+using state_t               = State<double,n>;
+using states_t              = States<double,n>;
+using timestate_t           = mpl::TimeState<double,state_t>;
+using edge_t                = mpl::Trajectory<timestate_t,segment>;
 
 TEST(Tree, tree)
 {

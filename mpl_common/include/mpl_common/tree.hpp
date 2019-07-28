@@ -99,6 +99,15 @@ namespace mpl {
             last_checked_idx = i;
             return kdtree(i);
         }
+        
+        constexpr
+        auto time_offset() -> Scalar  {
+            if(last_checked_idx) {
+                // return std::get<0>(trajectories.at(last_checked_idx).back());
+                return trajectories.at(last_checked_idx).back().time();
+            }
+            return 0;
+        }
 
         Edge get_trajectory(Index idx) 
         {

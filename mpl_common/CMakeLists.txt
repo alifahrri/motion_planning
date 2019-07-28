@@ -210,6 +210,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 catkin_add_gtest(${PROJECT_NAME}-test tests/unittest.cpp 
   tests/trajectory.cpp
   tests/tree.cpp
+  tests/traits.cpp
 )
 if(TARGET ${PROJECT_NAME}-test)
   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
