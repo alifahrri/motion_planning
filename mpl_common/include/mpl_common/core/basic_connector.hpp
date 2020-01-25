@@ -40,10 +40,12 @@ namespace mpl {
                 return trajectory;
             }
             
-            template <typename istate_t, typename fstate_t>
-            auto operator() (const istate_t &xi, const fstate_t &xf) {
-                using solver_state_type = typename T::solver_state_type;
-                using trajectory_t = typename T::edge_type;
+            template <typename istate_t, typename fstate_t, typename Derived = T>
+            // typename Derived::edge_type operator() (const istate_t &xi, const fstate_t &xf) {
+            auto operator() (const istate_t &xi, const fstate_t &xf) -> typename Derived::edge_type {
+                using solver_state_type = typename Derived::solver_state_type;
+                using trajectory_t      = typename Derived::edge_type;
+                /* TODO : enable via template parameters */
                 constexpr int nsegment = 10;
                 trajectory_t trajectory;
                 auto result = static_cast<T*>(this)->solver.template solve<nsegment-1>(

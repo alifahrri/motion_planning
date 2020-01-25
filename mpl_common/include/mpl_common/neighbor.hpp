@@ -12,28 +12,28 @@ namespace mpl {
             enum { result = w * Multiplication<ws...>::result };
         };
         template <size_t w>
-        struct Multiplication {
+        struct Multiplication<w> {
             enum { result = w };
         };
     } // namespace helper
     
     /* neighbor radius with compile-time constants */
-    template<typename Index, typename Scalar, size_t denom, size_t ... Workspaces>
+    template<typename Index, typename Scalar, size_t denom=0, size_t ... Workspaces>
     struct NeighborRadius {
         constexpr NeighborRadius(Scalar scale = Scalar{1})
             : scale(scale) {}
-        const size_t dim = sizeof...(Workspaces);
+        constexpr static size_t dim = sizeof...(Workspaces);
         const Scalar ws[dim] = {
             (Workspaces/denom)...
         };
-        const Scalar s = std::pow(2,dim) * (1+1/Scalar{dim}) * helper::Multiplication<Workspaces...>::result / denom;
-        const scale;
+        constexpr static Scalar s = std::pow(2,dim) * (1+1/Scalar{dim}) * helper::Multiplication<Workspaces...>::result / denom;
+        const Scalar scale;
         constexpr Scalar operator()(Index i) const {
             return scale*s*std::log(i+1)/(i+1);
         }
     };
     template <typename Index, typename Scalar>
-    struct NeighborRadius {
+    struct NeighborRadius<Index,Scalar,0> {
         template <typename Iterable>
         NeighborRadius(const Iterable &workspaces, Scalar scale = Scalar{1}) 
             : scale(scale)
